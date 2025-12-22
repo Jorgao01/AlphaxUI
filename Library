@@ -29,7 +29,16 @@ local ActiveNotifications = {}
 local ParentObj = gethui and gethui() or CoreGui
 if ParentObj:FindFirstChild("Alphax_UI_Lib") then ParentObj.Alphax_UI_Lib:Destroy() end
 
-local function GetNextOrder(Page) return #Page:GetChildren() end
+-- [CORRECAO] Ignora itens nao visuais para calcular a ordem correta
+local function GetNextOrder(Page)
+    local count = 0
+    for _, c in pairs(Page:GetChildren()) do
+        if c:IsA("Frame") or c:IsA("TextButton") or c:IsA("TextLabel") then
+            count = count + 1
+        end
+    end
+    return count
+end
 
 function Library:Notify(Text, Duration)
     local Dur = Duration or 3
@@ -93,7 +102,8 @@ end
 function Library:Tab(Name)
     local B = Instance.new("TextButton", UI_Elements.Tabs); B.Size=UDim2.new(0.9,0,0,35); B.BackgroundColor3=Color3.fromRGB(40,40,45); B.Text=Name; B.TextColor3=Color3.fromRGB(150,150,150); B.Font=Enum.Font.GothamBold; B.TextSize=12; Instance.new("UICorner", B).CornerRadius=UDim.new(0,4)
     local P = Instance.new("ScrollingFrame", UI_Elements.Pages); P.Size=UDim2.new(1,0,1,0); P.BackgroundTransparency=1; P.Visible=false; P.ScrollBarThickness=2
-    Instance.new("UIListLayout", P).Padding=UDim.new(0,8); Instance.new("UIPadding", P).PaddingTop=UDim.new(0,5)
+    Instance.new("UIListLayout", P).Padding=UDim.new(0,2); -- [CORRECAO] Padding reduzido para 2
+    Instance.new("UIPadding", P).PaddingTop=UDim.new(0,5)
     B.MouseButton1Click:Connect(function() 
         for _,x in pairs(UI_Elements.Pages:GetChildren()) do x.Visible=false end; for _,x in pairs(UI_Elements.Tabs:GetChildren()) do if x:IsA("TextButton") then x.TextColor3=Color3.fromRGB(150,150,150); x.BackgroundColor3=Color3.fromRGB(40,40,45) end end
         P.Visible=true; B.TextColor3=LibraryConfig.Theme.Accent; B.BackgroundColor3=Color3.fromRGB(50,50,55) 
@@ -101,7 +111,9 @@ function Library:Tab(Name)
     return P
 end
 
-function Library:Label(P, T) local l=Instance.new("TextLabel",P);l.Size=UDim2.new(0.95,0,0,25);l.BackgroundTransparency=1;l.Text=T;l.TextColor3=LibraryConfig.Theme.Accent;l.Font=Enum.Font.GothamBold;l.TextSize=14;l.TextXAlignment=Enum.TextXAlignment.Left;l.LayoutOrder=GetNextOrder(P) end
+function Library:Label(P, T) 
+    local l=Instance.new("TextLabel",P);l.Size=UDim2.new(0.95,0,0,25);l.BackgroundTransparency=1;l.Text=T;l.TextColor3=LibraryConfig.Theme.Accent;l.Font=Enum.Font.GothamBold;l.TextSize=14;l.TextXAlignment=Enum.TextXAlignment.Left;l.LayoutOrder=GetNextOrder(P) 
+end
 function Library:Button(P, T, C) local b=Instance.new("TextButton",P);b.Size=UDim2.new(0.95,0,0,35);b.BackgroundColor3=LibraryConfig.Theme.Accent;b.Text=T;b.TextColor3=Color3.new(1,1,1);b.Font=Enum.Font.GothamBold;b.TextSize=14;Instance.new("UICorner",b).CornerRadius=UDim.new(0,4);b.MouseButton1Click:Connect(C);b.LayoutOrder=GetNextOrder(P) end
 function Library:Toggle(P, T, Tab, Key, Call)
     local b=Instance.new("TextButton",P);b.Size=UDim2.new(0.95,0,0,35);b.BackgroundColor3=Color3.fromRGB(40,40,45);b.Text="";Instance.new("UICorner",b).CornerRadius=UDim.new(0,4)
@@ -115,10 +127,7 @@ function Library:Dropdown(P, T, Opts, Tab, Key, Multi)
     local HeaderBtn = Instance.new("TextButton", f); HeaderBtn.Size = UDim2.new(1,0,0,35); HeaderBtn.BackgroundTransparency=1; HeaderBtn.Text=""
     local l = Instance.new("TextLabel", f); l.Text = T .. ": " .. (Multi and "..." or (Tab[Key] or "")); l.Size = UDim2.new(1, -35, 0, 35); l.Position = UDim2.new(0, 10, 0, 0); l.BackgroundTransparency = 1; l.TextColor3 = LibraryConfig.Theme.Text; l.Font = Enum.Font.Gotham; l.TextSize = 12; l.TextXAlignment = Enum.TextXAlignment.Left
     local lst = Instance.new("ScrollingFrame", f); lst.Size = UDim2.new(1, 0, 0, 150); lst.Position = UDim2.new(0, 0, 0, 35); lst.BackgroundColor3 = Color3.fromRGB(35, 35, 40); lst.ScrollBarThickness = 4; lst.BorderSizePixel = 0; lst.CanvasSize = UDim2.new(0,0,0,#Opts*30)
-    
-    -- [CORRECAO] Padding no Dropdown
     local pad = Instance.new("UIPadding", lst); pad.PaddingLeft = UDim.new(0, 10); pad.PaddingTop = UDim.new(0, 5)
-    
     Instance.new("UIListLayout", lst).SortOrder = Enum.SortOrder.LayoutOrder
     for _, o in pairs(Opts) do
         local ob = Instance.new("TextButton", lst); ob.Size = UDim2.new(1, 0, 0, 30); ob.BackgroundColor3 = Color3.fromRGB(35, 35, 40); ob.Text = o; ob.TextColor3 = Color3.fromRGB(200, 200, 200); ob.Font = Enum.Font.Gotham; ob.TextSize = 12; ob.BorderSizePixel = 0; ob.TextXAlignment = Enum.TextXAlignment.Left
@@ -156,15 +165,12 @@ function Library:CollapsibleSection(P, Title, TabKey, SectionKey)
     local HeaderLabel = Instance.new("TextLabel", HeaderButton); HeaderLabel.Text = Title; HeaderLabel.Size = UDim2.new(1, -30, 1, 0); HeaderLabel.Position = UDim2.new(0, 10, 0, 0); HeaderLabel.BackgroundTransparency = 1; HeaderLabel.TextColor3 = LibraryConfig.Theme.Accent; HeaderLabel.Font = Enum.Font.GothamBold; HeaderLabel.TextSize = 14; HeaderLabel.TextXAlignment = Enum.TextXAlignment.Left
     local ArrowLabel = Instance.new("TextLabel", HeaderButton); ArrowLabel.Text = sectionState and "^" or "V"; ArrowLabel.Size = UDim2.new(0, 20, 1, 0); ArrowLabel.Position = UDim2.new(1, -25, 0, 0); ArrowLabel.BackgroundTransparency = 1; ArrowLabel.TextColor3 = LibraryConfig.Theme.Accent; ArrowLabel.Font = Enum.Font.GothamBold; ArrowLabel.TextSize = 14
     local ContentFrame = Instance.new("Frame", MainFrame); ContentFrame.Size = UDim2.new(1, 0, 0, 0); ContentFrame.Position = UDim2.new(0, 0, 0, 35); ContentFrame.BackgroundTransparency = 1; ContentFrame.Visible = sectionState
-    local ContentListLayout = Instance.new("UIListLayout", ContentFrame); ContentListLayout.Padding = UDim.new(0, 5); ContentListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    
-    -- [CORRECAO] Padding na Secao
+    local ContentListLayout = Instance.new("UIListLayout", ContentFrame); ContentListLayout.Padding = UDim.new(0, 2); ContentListLayout.SortOrder = Enum.SortOrder.LayoutOrder -- [CORRECAO] Padding 2
     local pad = Instance.new("UIPadding", ContentFrame); pad.PaddingTop = UDim.new(0, 5); pad.PaddingLeft = UDim.new(0, 10); pad.PaddingRight = UDim.new(0, 10)
-    
     local function updateHeight()
         if sectionState then
             local contentHeight = 0
-            for _, child in pairs(ContentFrame:GetChildren()) do if child:IsA("Frame") or child:IsA("TextButton") then contentHeight = contentHeight + child.Size.Y.Offset + ContentListLayout.Padding.Offset end end
+            for _, child in pairs(ContentFrame:GetChildren()) do if child:IsA("Frame") or child:IsA("TextButton") or child:IsA("TextLabel") then contentHeight = contentHeight + child.Size.Y.Offset + ContentListLayout.Padding.Offset end end
             MainFrame.Size = UDim2.new(0.95, 0, 0, 35 + contentHeight + 10); ArrowLabel.Text = "^"
         else MainFrame.Size = UDim2.new(0.95, 0, 0, 35); ArrowLabel.Text = "V" end
     end
