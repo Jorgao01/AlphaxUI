@@ -2,7 +2,6 @@ local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
-local TeleportService = game:GetService("TeleportService")
 local CoreGui = game:GetService("CoreGui")
 
 local LibraryConfig = {
@@ -27,15 +26,15 @@ local ActiveNotifications = {}
 local ParentObj = gethui and gethui() or CoreGui
 if ParentObj:FindFirstChild("Alphax_UI_Lib") then ParentObj.Alphax_UI_Lib:Destroy() end
 
--- [CORRECAO CRITICA] Calcula a ordem baseada no ultimo item para nao jogar pro final
+-- [CORRECAO CRITICA DE ORDEM]
 local function GetNextOrder(Container)
-    local maxOrder = 0
-    for _, child in pairs(Container:GetChildren()) do
-        if (child:IsA("Frame") or child:IsA("TextButton") or child:IsA("TextLabel")) and child.LayoutOrder > maxOrder then
-            maxOrder = child.LayoutOrder
+    local max = 0
+    for _, c in pairs(Container:GetChildren()) do
+        if c:IsA("GuiObject") and c.LayoutOrder > max then
+            max = c.LayoutOrder
         end
     end
-    return maxOrder + 1
+    return max + 1
 end
 
 function Library:Notify(Text, Duration)
@@ -100,7 +99,9 @@ end
 function Library:Tab(Name)
     local B = Instance.new("TextButton", UI_Elements.Tabs); B.Size=UDim2.new(0.9,0,0,35); B.BackgroundColor3=Color3.fromRGB(40,40,45); B.Text=Name; B.TextColor3=Color3.fromRGB(150,150,150); B.Font=Enum.Font.GothamBold; B.TextSize=12; Instance.new("UICorner", B).CornerRadius=UDim.new(0,4)
     local P = Instance.new("ScrollingFrame", UI_Elements.Pages); P.Size=UDim2.new(1,0,1,0); P.BackgroundTransparency=1; P.Visible=false; P.ScrollBarThickness=2
-    Instance.new("UIListLayout", P).Padding=UDim.new(0,3); Instance.new("UIPadding", P).PaddingTop=UDim.new(0,5)
+    -- [CORRECAO] SortOrder forcado
+    local LL = Instance.new("UIListLayout", P); LL.Padding=UDim.new(0,4); LL.SortOrder = Enum.SortOrder.LayoutOrder
+    Instance.new("UIPadding", P).PaddingTop=UDim.new(0,5)
     B.MouseButton1Click:Connect(function() 
         for _,x in pairs(UI_Elements.Pages:GetChildren()) do x.Visible=false end; for _,x in pairs(UI_Elements.Tabs:GetChildren()) do if x:IsA("TextButton") then x.TextColor3=Color3.fromRGB(150,150,150); x.BackgroundColor3=Color3.fromRGB(40,40,45) end end
         P.Visible=true; B.TextColor3=LibraryConfig.Theme.Accent; B.BackgroundColor3=Color3.fromRGB(50,50,55) 
@@ -110,13 +111,13 @@ end
 
 function Library:Label(P, T) 
     local l=Instance.new("TextLabel",P);l.Size=UDim2.new(0.95,0,0,25);l.BackgroundTransparency=1;l.Text=T;l.TextColor3=LibraryConfig.Theme.Accent;l.Font=Enum.Font.GothamBold;l.TextSize=14;l.TextXAlignment=Enum.TextXAlignment.Left
-    -- [CORRECAO] Usa LayoutOrder correto para nao ir pro final
-    l.LayoutOrder=GetNextOrder(P) 
+    -- [CORRECAO] Garante que pegue a ordem correta
+    l.LayoutOrder = GetNextOrder(P)
 end
 function Library:Button(P, T, C) local b=Instance.new("TextButton",P);b.Size=UDim2.new(0.95,0,0,35);b.BackgroundColor3=LibraryConfig.Theme.Accent;b.Text=T;b.TextColor3=Color3.new(1,1,1);b.Font=Enum.Font.GothamBold;b.TextSize=14;Instance.new("UICorner",b).CornerRadius=UDim.new(0,4);b.MouseButton1Click:Connect(C);b.LayoutOrder=GetNextOrder(P) end
 function Library:Toggle(P, T, Tab, Key, Call)
     local b=Instance.new("TextButton",P);b.Size=UDim2.new(0.95,0,0,35);b.BackgroundColor3=Color3.fromRGB(40,40,45);b.Text="";Instance.new("UICorner",b).CornerRadius=UDim.new(0,4)
-    local l=Instance.new("TextLabel",b);l.Text=T;l.Size=UDim2.new(1,-40,1,0);l.Position=UDim2.new(0,10,0,0);l.BackgroundTransparency=1;l.TextColor3=LibraryConfig.Theme.Text;l.Font=Enum.Font.Gotham;l.TextSize=12;l.TextXAlignment=Enum.TextXAlignment.Left
+    local l=Instance.new("TextLabel",b);l.Text="   "..T;l.Size=UDim2.new(1,-40,1,0);l.Position=UDim2.new(0,0,0,0);l.BackgroundTransparency=1;l.TextColor3=LibraryConfig.Theme.Text;l.Font=Enum.Font.Gotham;l.TextSize=12;l.TextXAlignment=Enum.TextXAlignment.Left -- [CORRECAO] Espaco no texto
     local i=Instance.new("Frame",b);i.Size=UDim2.new(0,20,0,20);i.Position=UDim2.new(1,-30,0.5,-10);Instance.new("UICorner",i).CornerRadius=UDim.new(0,4)
     local function Up() i.BackgroundColor3 = Tab[Key] and LibraryConfig.Theme.Accent or Color3.fromRGB(60,60,60) end; Up()
     b.MouseButton1Click:Connect(function() Tab[Key] = not Tab[Key]; Up(); if Call then Call(Tab[Key]) end end); b.LayoutOrder=GetNextOrder(P)
@@ -124,16 +125,15 @@ end
 function Library:Dropdown(P, T, Opts, Tab, Key, Multi)
     local f = Instance.new("Frame", P); f.Size = UDim2.new(0.95, 0, 0, 35); f.BackgroundColor3 = Color3.fromRGB(40, 40, 45); f.ClipsDescendants = true; Instance.new("UICorner", f).CornerRadius = UDim.new(0, 4)
     local HeaderBtn = Instance.new("TextButton", f); HeaderBtn.Size = UDim2.new(1,0,0,35); HeaderBtn.BackgroundTransparency=1; HeaderBtn.Text=""
-    local l = Instance.new("TextLabel", f); l.Text = T .. ": " .. (Multi and "..." or (Tab[Key] or "")); l.Size = UDim2.new(1, -35, 0, 35); l.Position = UDim2.new(0, 10, 0, 0); l.BackgroundTransparency = 1; l.TextColor3 = LibraryConfig.Theme.Text; l.Font = Enum.Font.Gotham; l.TextSize = 12; l.TextXAlignment = Enum.TextXAlignment.Left
+    local l = Instance.new("TextLabel", f); l.Text = "   "..T .. ": " .. (Multi and "..." or (Tab[Key] or "")); l.Size = UDim2.new(1, -35, 0, 35); l.Position = UDim2.new(0, 0, 0, 0); l.BackgroundTransparency = 1; l.TextColor3 = LibraryConfig.Theme.Text; l.Font = Enum.Font.Gotham; l.TextSize = 12; l.TextXAlignment = Enum.TextXAlignment.Left -- [CORRECAO] Espaco no texto
     local lst = Instance.new("ScrollingFrame", f); lst.Size = UDim2.new(1, 0, 0, 150); lst.Position = UDim2.new(0, 0, 0, 35); lst.BackgroundColor3 = Color3.fromRGB(35, 35, 40); lst.ScrollBarThickness = 4; lst.BorderSizePixel = 0; lst.CanvasSize = UDim2.new(0,0,0,#Opts*30)
-    -- [CORRECAO] Adicionado Padding para o texto nao colar na borda
     local pad = Instance.new("UIPadding", lst); pad.PaddingLeft = UDim.new(0, 10); pad.PaddingTop = UDim.new(0, 5)
     Instance.new("UIListLayout", lst).SortOrder = Enum.SortOrder.LayoutOrder
     for _, o in pairs(Opts) do
         local ob = Instance.new("TextButton", lst); ob.Size = UDim2.new(1, 0, 0, 30); ob.BackgroundColor3 = Color3.fromRGB(35, 35, 40); ob.Text = o; ob.TextColor3 = Color3.fromRGB(200, 200, 200); ob.Font = Enum.Font.Gotham; ob.TextSize = 12; ob.BorderSizePixel = 0; ob.TextXAlignment = Enum.TextXAlignment.Left
         ob.MouseButton1Click:Connect(function() 
             if Multi then Tab[Key][o] = not Tab[Key][o]; ob.TextColor3 = Tab[Key][o] and LibraryConfig.Theme.Accent or Color3.fromRGB(200, 200, 200)
-            else Tab[Key] = o; l.Text = T .. ": " .. o; TweenService:Create(f, TweenInfo.new(0.3), {Size = UDim2.new(0.95, 0, 0, 35)}):Play() end
+            else Tab[Key] = o; l.Text = "   "..T .. ": " .. o; TweenService:Create(f, TweenInfo.new(0.3), {Size = UDim2.new(0.95, 0, 0, 35)}):Play() end
         end)
     end
     HeaderBtn.MouseButton1Click:Connect(function() TweenService:Create(f, TweenInfo.new(0.3), {Size = UDim2.new(0.95, 0, 0, f.Size.Y.Offset == 35 and (35 + math.min(#Opts*30, 150)) or 35)}):Play() end)
