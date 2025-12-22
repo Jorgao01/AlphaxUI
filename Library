@@ -79,7 +79,6 @@ function Library:Window(TitleText)
     Instance.new("UIListLayout", TabsC).Padding=UDim.new(0,5); Instance.new("UIPadding", TabsC).PaddingTop=UDim.new(0,10)
     UI_Elements.Tabs=TabsC; UI_Elements.Pages=Instance.new("Frame", Main); UI_Elements.Pages.Size=UDim2.new(1,-155,1,-55); UI_Elements.Pages.Position=UDim2.new(0,150,0,45); UI_Elements.Pages.BackgroundTransparency=1; UI_Elements.Pages.Parent=Main
     
-    -- Drag
     local drag, startPos; Top.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then drag=i.Position; startPos=Main.Position end end)
     UserInputService.InputChanged:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseMovement and drag then local d=i.Position-drag; Main.Position=UDim2.new(startPos.X.Scale, startPos.X.Offset+d.X, startPos.Y.Scale, startPos.Y.Offset+d.Y) end end)
     UserInputService.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then drag=nil end end)
@@ -102,7 +101,6 @@ function Library:Tab(Name)
     return P
 end
 
--- COMPONENTS
 function Library:Label(P, T) local l=Instance.new("TextLabel",P);l.Size=UDim2.new(0.95,0,0,25);l.BackgroundTransparency=1;l.Text=T;l.TextColor3=LibraryConfig.Theme.Accent;l.Font=Enum.Font.GothamBold;l.TextSize=14;l.TextXAlignment=Enum.TextXAlignment.Left;l.LayoutOrder=GetNextOrder(P) end
 function Library:Button(P, T, C) local b=Instance.new("TextButton",P);b.Size=UDim2.new(0.95,0,0,35);b.BackgroundColor3=LibraryConfig.Theme.Accent;b.Text=T;b.TextColor3=Color3.new(1,1,1);b.Font=Enum.Font.GothamBold;b.TextSize=14;Instance.new("UICorner",b).CornerRadius=UDim.new(0,4);b.MouseButton1Click:Connect(C);b.LayoutOrder=GetNextOrder(P) end
 function Library:Toggle(P, T, Tab, Key, Call)
@@ -117,9 +115,13 @@ function Library:Dropdown(P, T, Opts, Tab, Key, Multi)
     local HeaderBtn = Instance.new("TextButton", f); HeaderBtn.Size = UDim2.new(1,0,0,35); HeaderBtn.BackgroundTransparency=1; HeaderBtn.Text=""
     local l = Instance.new("TextLabel", f); l.Text = T .. ": " .. (Multi and "..." or (Tab[Key] or "")); l.Size = UDim2.new(1, -35, 0, 35); l.Position = UDim2.new(0, 10, 0, 0); l.BackgroundTransparency = 1; l.TextColor3 = LibraryConfig.Theme.Text; l.Font = Enum.Font.Gotham; l.TextSize = 12; l.TextXAlignment = Enum.TextXAlignment.Left
     local lst = Instance.new("ScrollingFrame", f); lst.Size = UDim2.new(1, 0, 0, 150); lst.Position = UDim2.new(0, 0, 0, 35); lst.BackgroundColor3 = Color3.fromRGB(35, 35, 40); lst.ScrollBarThickness = 4; lst.BorderSizePixel = 0; lst.CanvasSize = UDim2.new(0,0,0,#Opts*30)
+    
+    -- [CORRECAO] Padding no Dropdown
+    local pad = Instance.new("UIPadding", lst); pad.PaddingLeft = UDim.new(0, 10); pad.PaddingTop = UDim.new(0, 5)
+    
     Instance.new("UIListLayout", lst).SortOrder = Enum.SortOrder.LayoutOrder
     for _, o in pairs(Opts) do
-        local ob = Instance.new("TextButton", lst); ob.Size = UDim2.new(1, 0, 0, 30); ob.BackgroundColor3 = Color3.fromRGB(35, 35, 40); ob.Text = o; ob.TextColor3 = Color3.fromRGB(200, 200, 200); ob.Font = Enum.Font.Gotham; ob.TextSize = 12; ob.BorderSizePixel = 0
+        local ob = Instance.new("TextButton", lst); ob.Size = UDim2.new(1, 0, 0, 30); ob.BackgroundColor3 = Color3.fromRGB(35, 35, 40); ob.Text = o; ob.TextColor3 = Color3.fromRGB(200, 200, 200); ob.Font = Enum.Font.Gotham; ob.TextSize = 12; ob.BorderSizePixel = 0; ob.TextXAlignment = Enum.TextXAlignment.Left
         ob.MouseButton1Click:Connect(function() 
             if Multi then Tab[Key][o] = not Tab[Key][o]; ob.TextColor3 = Tab[Key][o] and LibraryConfig.Theme.Accent or Color3.fromRGB(200, 200, 200)
             else Tab[Key] = o; l.Text = T .. ": " .. o; TweenService:Create(f, TweenInfo.new(0.3), {Size = UDim2.new(0.95, 0, 0, 35)}):Play() end
@@ -155,12 +157,15 @@ function Library:CollapsibleSection(P, Title, TabKey, SectionKey)
     local ArrowLabel = Instance.new("TextLabel", HeaderButton); ArrowLabel.Text = sectionState and "^" or "V"; ArrowLabel.Size = UDim2.new(0, 20, 1, 0); ArrowLabel.Position = UDim2.new(1, -25, 0, 0); ArrowLabel.BackgroundTransparency = 1; ArrowLabel.TextColor3 = LibraryConfig.Theme.Accent; ArrowLabel.Font = Enum.Font.GothamBold; ArrowLabel.TextSize = 14
     local ContentFrame = Instance.new("Frame", MainFrame); ContentFrame.Size = UDim2.new(1, 0, 0, 0); ContentFrame.Position = UDim2.new(0, 0, 0, 35); ContentFrame.BackgroundTransparency = 1; ContentFrame.Visible = sectionState
     local ContentListLayout = Instance.new("UIListLayout", ContentFrame); ContentListLayout.Padding = UDim.new(0, 5); ContentListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    Instance.new("UIPadding", ContentFrame).PaddingTop = UDim.new(0, 5); Instance.new("UIPadding", ContentFrame).PaddingLeft = UDim.new(0, 10)
+    
+    -- [CORRECAO] Padding na Secao
+    local pad = Instance.new("UIPadding", ContentFrame); pad.PaddingTop = UDim.new(0, 5); pad.PaddingLeft = UDim.new(0, 10); pad.PaddingRight = UDim.new(0, 10)
+    
     local function updateHeight()
         if sectionState then
             local contentHeight = 0
             for _, child in pairs(ContentFrame:GetChildren()) do if child:IsA("Frame") or child:IsA("TextButton") then contentHeight = contentHeight + child.Size.Y.Offset + ContentListLayout.Padding.Offset end end
-            MainFrame.Size = UDim2.new(0.95, 0, 0, 35 + contentHeight); ArrowLabel.Text = "^"
+            MainFrame.Size = UDim2.new(0.95, 0, 0, 35 + contentHeight + 10); ArrowLabel.Text = "^"
         else MainFrame.Size = UDim2.new(0.95, 0, 0, 35); ArrowLabel.Text = "V" end
     end
     HeaderButton.MouseButton1Click:Connect(function() sectionState = not sectionState; CollapsibleStates[TabKey][SectionKey] = sectionState; ContentFrame.Visible = sectionState; updateHeight() end)
@@ -168,30 +173,15 @@ function Library:CollapsibleSection(P, Title, TabKey, SectionKey)
     return ContentFrame, updateHeight
 end
 
--- === NOVA FUNCAO PLAYER DROPDOWN (ADICIONAR ISSO CORRIGE O ERRO) ===
 function Library:PlayerDropdown(P, T, Tab, Key, Call)
     local Players = game:GetService("Players")
-    local function GetNames()
-        local list = {}
-        for _, p in pairs(Players:GetPlayers()) do
-            if p ~= Players.LocalPlayer then table.insert(list, p.Name) end
-        end
-        return list
-    end
-    -- Usa o dropdown normal mas atualiza
-    local DropFrame = Instance.new("Frame", P) -- Placeholder para manter ordem
-    DropFrame.LayoutOrder = GetNextOrder(P)
-    -- Recria a logica do dropdown simples aqui ou chama Library:Dropdown (mas Library:Dropdown cria frame novo)
-    -- Para simplificar, vou chamar o Dropdown normal passando a lista inicial
+    local function GetNames() local l={} for _,p in pairs(Players:GetPlayers()) do if p~=Players.LocalPlayer then table.insert(l,p.Name) end end return l end
     Library:Dropdown(P, T, GetNames(), Tab, Key, false)
-    -- Nota: A atualizacao dinamica requer recriar o dropdown ou ter uma funcao .Refresh nele. 
-    -- Como a versao simplificada acima nao retorna objeto, vamos deixar como estatico por enquanto para nao crashar o script.
-    -- O importante agora é a função existir para o script não dar erro de nil.
 end
 
 function Library:CopyDiscord(Link) if setclipboard then setclipboard(Link); Library:Notify("Discord Copied!", 2) end end
 function Library:Rejoin() game:GetService("TeleportService"):Teleport(game.PlaceId, game.Players.LocalPlayer) end
-function Library:ServerHop() Library:Notify("Server Hopping...", 2) end -- Placeholder
+function Library:ServerHop() Library:Notify("Server Hopping...", 2) end 
 
 UserInputService.InputBegan:Connect(function(input, processed)
     if processed then return end
