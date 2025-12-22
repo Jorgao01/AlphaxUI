@@ -1,10 +1,8 @@
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
-local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
 
 local LibraryConfig = {
     MenuOpen = true,
@@ -27,6 +25,17 @@ local ActiveNotifications = {}
 
 local ParentObj = gethui and gethui() or CoreGui
 if ParentObj:FindFirstChild("Alphax_UI_Lib") then ParentObj.Alphax_UI_Lib:Destroy() end
+
+-- [CORRECAO DE ORDEM]
+local function GetNextOrder(Container)
+    local max = 0
+    for _, c in pairs(Container:GetChildren()) do
+        if c:IsA("GuiObject") and c.LayoutOrder > max then
+            max = c.LayoutOrder
+        end
+    end
+    return max + 1
+end
 
 function Library:Notify(Text, Duration)
     local Dur = Duration or 3
@@ -90,8 +99,8 @@ end
 function Library:Tab(Name)
     local B = Instance.new("TextButton", UI_Elements.Tabs); B.Size=UDim2.new(0.9,0,0,35); B.BackgroundColor3=Color3.fromRGB(40,40,45); B.Text=Name; B.TextColor3=Color3.fromRGB(150,150,150); B.Font=Enum.Font.GothamBold; B.TextSize=12; Instance.new("UICorner", B).CornerRadius=UDim.new(0,4)
     local P = Instance.new("ScrollingFrame", UI_Elements.Pages); P.Size=UDim2.new(1,0,1,0); P.BackgroundTransparency=1; P.Visible=false; P.ScrollBarThickness=2
-    -- [FIX] LayoutOrder usado corretamente para nao embaralhar
-    Instance.new("UIListLayout", P).Padding=UDim.new(0,3); Instance.new("UIPadding", P).PaddingTop=UDim.new(0,5)
+    local LL = Instance.new("UIListLayout", P); LL.Padding=UDim.new(0,4); LL.SortOrder = Enum.SortOrder.LayoutOrder
+    Instance.new("UIPadding", P).PaddingTop=UDim.new(0,5)
     B.MouseButton1Click:Connect(function() 
         for _,x in pairs(UI_Elements.Pages:GetChildren()) do x.Visible=false end; for _,x in pairs(UI_Elements.Tabs:GetChildren()) do if x:IsA("TextButton") then x.TextColor3=Color3.fromRGB(150,150,150); x.BackgroundColor3=Color3.fromRGB(40,40,45) end end
         P.Visible=true; B.TextColor3=LibraryConfig.Theme.Accent; B.BackgroundColor3=Color3.fromRGB(50,50,55) 
@@ -101,23 +110,29 @@ end
 
 function Library:Label(P, T) 
     local l=Instance.new("TextLabel",P);l.Size=UDim2.new(0.95,0,0,25);l.BackgroundTransparency=1;l.Text=T;l.TextColor3=LibraryConfig.Theme.Accent;l.Font=Enum.Font.GothamBold;l.TextSize=14;l.TextXAlignment=Enum.TextXAlignment.Left
-    -- [FIX] Padding na Label
+    -- [CORRECAO] Padding no Label
     local pad = Instance.new("UIPadding", l); pad.PaddingLeft = UDim.new(0, 10)
+    l.LayoutOrder = GetNextOrder(P)
 end
-function Library:Button(P, T, C) local b=Instance.new("TextButton",P);b.Size=UDim2.new(0.95,0,0,35);b.BackgroundColor3=LibraryConfig.Theme.Accent;b.Text=T;b.TextColor3=Color3.new(1,1,1);b.Font=Enum.Font.GothamBold;b.TextSize=14;Instance.new("UICorner",b).CornerRadius=UDim.new(0,4);b.MouseButton1Click:Connect(C) end
+
+function Library:Button(P, T, C) local b=Instance.new("TextButton",P);b.Size=UDim2.new(0.95,0,0,35);b.BackgroundColor3=LibraryConfig.Theme.Accent;b.Text=T;b.TextColor3=Color3.new(1,1,1);b.Font=Enum.Font.GothamBold;b.TextSize=14;Instance.new("UICorner",b).CornerRadius=UDim.new(0,4);b.MouseButton1Click:Connect(C);b.LayoutOrder=GetNextOrder(P) end
+
 function Library:Toggle(P, T, Tab, Key, Call)
     local b=Instance.new("TextButton",P);b.Size=UDim2.new(0.95,0,0,35);b.BackgroundColor3=Color3.fromRGB(40,40,45);b.Text="";Instance.new("UICorner",b).CornerRadius=UDim.new(0,4)
     local l=Instance.new("TextLabel",b);l.Text=T;l.Size=UDim2.new(1,-40,1,0);l.Position=UDim2.new(0,0,0,0);l.BackgroundTransparency=1;l.TextColor3=LibraryConfig.Theme.Text;l.Font=Enum.Font.Gotham;l.TextSize=12;l.TextXAlignment=Enum.TextXAlignment.Left
-    local pad = Instance.new("UIPadding", l); pad.PaddingLeft = UDim.new(0, 10) -- [FIX] Padding
+    -- [CORRECAO] Padding no Toggle
+    local pad = Instance.new("UIPadding", l); pad.PaddingLeft = UDim.new(0, 10)
     local i=Instance.new("Frame",b);i.Size=UDim2.new(0,20,0,20);i.Position=UDim2.new(1,-30,0.5,-10);Instance.new("UICorner",i).CornerRadius=UDim.new(0,4)
     local function Up() i.BackgroundColor3 = Tab[Key] and LibraryConfig.Theme.Accent or Color3.fromRGB(60,60,60) end; Up()
-    b.MouseButton1Click:Connect(function() Tab[Key] = not Tab[Key]; Up(); if Call then Call(Tab[Key]) end end)
+    b.MouseButton1Click:Connect(function() Tab[Key] = not Tab[Key]; Up(); if Call then Call(Tab[Key]) end end); b.LayoutOrder=GetNextOrder(P)
 end
+
 function Library:Dropdown(P, T, Opts, Tab, Key, Multi)
     local f = Instance.new("Frame", P); f.Size = UDim2.new(0.95, 0, 0, 35); f.BackgroundColor3 = Color3.fromRGB(40, 40, 45); f.ClipsDescendants = true; Instance.new("UICorner", f).CornerRadius = UDim.new(0, 4)
     local HeaderBtn = Instance.new("TextButton", f); HeaderBtn.Size = UDim2.new(1,0,0,35); HeaderBtn.BackgroundTransparency=1; HeaderBtn.Text=""
     local l = Instance.new("TextLabel", f); l.Text = T .. ": " .. (Multi and "..." or (Tab[Key] or "")); l.Size = UDim2.new(1, -35, 0, 35); l.Position = UDim2.new(0, 0, 0, 0); l.BackgroundTransparency = 1; l.TextColor3 = LibraryConfig.Theme.Text; l.Font = Enum.Font.Gotham; l.TextSize = 12; l.TextXAlignment = Enum.TextXAlignment.Left
-    local padLabel = Instance.new("UIPadding", l); padLabel.PaddingLeft = UDim.new(0, 10) -- [FIX] Padding
+    -- [CORRECAO] Padding no Header do Dropdown
+    local padLabel = Instance.new("UIPadding", l); padLabel.PaddingLeft = UDim.new(0, 10)
     local lst = Instance.new("ScrollingFrame", f); lst.Size = UDim2.new(1, 0, 0, 150); lst.Position = UDim2.new(0, 0, 0, 35); lst.BackgroundColor3 = Color3.fromRGB(35, 35, 40); lst.ScrollBarThickness = 4; lst.BorderSizePixel = 0; lst.CanvasSize = UDim2.new(0,0,0,#Opts*30)
     local pad = Instance.new("UIPadding", lst); pad.PaddingLeft = UDim.new(0, 10); pad.PaddingTop = UDim.new(0, 5)
     Instance.new("UIListLayout", lst).SortOrder = Enum.SortOrder.LayoutOrder
@@ -129,32 +144,39 @@ function Library:Dropdown(P, T, Opts, Tab, Key, Multi)
         end)
     end
     HeaderBtn.MouseButton1Click:Connect(function() TweenService:Create(f, TweenInfo.new(0.3), {Size = UDim2.new(0.95, 0, 0, f.Size.Y.Offset == 35 and (35 + math.min(#Opts*30, 150)) or 35)}):Play() end)
+    f.LayoutOrder=GetNextOrder(P)
 end
+
 function Library:Slider(P, T, Tab, Key, Min, Max)
     local f=Instance.new("Frame",P);f.Size=UDim2.new(0.95,0,0,45);f.BackgroundColor3=Color3.fromRGB(40,40,45);Instance.new("UICorner",f).CornerRadius=UDim.new(0,4)
     local l=Instance.new("TextLabel",f);l.Size=UDim2.new(1,0,0,20);l.Position=UDim2.new(0,0,0,0);l.BackgroundTransparency=1;l.TextColor3=LibraryConfig.Theme.Text;l.Font=Enum.Font.Gotham;l.TextSize=12;l.TextXAlignment=Enum.TextXAlignment.Left
-    local pad = Instance.new("UIPadding", l); pad.PaddingLeft = UDim.new(0, 10) -- [FIX] Padding
+    -- [CORRECAO] Padding no Slider
+    local pad = Instance.new("UIPadding", l); pad.PaddingLeft = UDim.new(0, 10)
     local b=Instance.new("TextButton",f);b.Text="";b.Size=UDim2.new(0.9,0,0,6);b.Position=UDim2.new(0.05,0,0.7,0);b.BackgroundColor3=Color3.fromRGB(20,20,20);Instance.new("UICorner",b).CornerRadius=UDim.new(1,0)
     local fill=Instance.new("Frame",b);fill.BackgroundColor3=LibraryConfig.Theme.Accent;Instance.new("UICorner",fill).CornerRadius=UDim.new(1,0)
     local function Up() local v=Tab[Key]; local p=(v-Min)/(Max-Min); fill.Size=UDim2.new(p,0,1,0); l.Text=T..": "..v end; Up()
     local drag; b.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then drag=true end end)
     UserInputService.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then drag=false end end)
     UserInputService.InputChanged:Connect(function(i) if drag and i.UserInputType==Enum.UserInputType.MouseMovement then local p=math.clamp((i.Position.X-b.AbsolutePosition.X)/b.AbsoluteSize.X,0,1); Tab[Key]=math.floor(Min+((Max-Min)*p)); Up() end end)
+    f.LayoutOrder=GetNextOrder(P)
 end
+
 function Library:Keybind(P, T)
     local b=Instance.new("TextButton",P);b.Size=UDim2.new(0.95,0,0,35);b.BackgroundColor3=Color3.fromRGB(40,40,45);b.Text="";Instance.new("UICorner",b).CornerRadius=UDim.new(0,4)
     local l=Instance.new("TextLabel",b);l.Text=T;l.Size=UDim2.new(0.6,0,1,0);l.Position=UDim2.new(0,0,0,0);l.BackgroundTransparency=1;l.TextColor3=LibraryConfig.Theme.Text;l.Font=Enum.Font.Gotham;l.TextSize=12;l.TextXAlignment=Enum.TextXAlignment.Left
-    local pad = Instance.new("UIPadding", l); pad.PaddingLeft = UDim.new(0, 10) -- [FIX] Padding
+    local pad = Instance.new("UIPadding", l); pad.PaddingLeft = UDim.new(0, 10)
     local k=Instance.new("TextLabel",b);k.Text=LibraryConfig.MenuKey.Name;k.Size=UDim2.new(0.3,0,1,0);k.Position=UDim2.new(0.65,0,0,0);k.BackgroundTransparency=1;k.TextColor3=LibraryConfig.Theme.Accent;k.Font=Enum.Font.GothamBold;k.TextSize=12;k.TextXAlignment=Enum.TextXAlignment.Right
     b.MouseButton1Click:Connect(function() k.Text="..."; k.TextColor3=Color3.fromRGB(255,50,50); local c; c=UserInputService.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.Keyboard then LibraryConfig.MenuKey=i.KeyCode; k.Text=i.KeyCode.Name; k.TextColor3=LibraryConfig.Theme.Accent; c:Disconnect() end end) end)
+    b.LayoutOrder=GetNextOrder(P)
 end
+
 function Library:CollapsibleSection(P, Title, TabKey, SectionKey)
     if not CollapsibleStates[TabKey] then CollapsibleStates[TabKey] = {} end
     local sectionState = CollapsibleStates[TabKey][SectionKey]
     local MainFrame = Instance.new("Frame", P); MainFrame.Size = UDim2.new(0.95, 0, 0, 35); MainFrame.BackgroundColor3 = LibraryConfig.Theme.Container; MainFrame.ClipsDescendants = true; Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0,4)
     local HeaderButton = Instance.new("TextButton", MainFrame); HeaderButton.Size = UDim2.new(1, 0, 0, 35); HeaderButton.BackgroundTransparency = 1; HeaderButton.Text = ""
     local HeaderLabel = Instance.new("TextLabel", HeaderButton); HeaderLabel.Text = Title; HeaderLabel.Size = UDim2.new(1, -30, 1, 0); HeaderLabel.Position = UDim2.new(0, 0, 0, 0); HeaderLabel.BackgroundTransparency = 1; HeaderLabel.TextColor3 = LibraryConfig.Theme.Accent; HeaderLabel.Font = Enum.Font.GothamBold; HeaderLabel.TextSize = 14; HeaderLabel.TextXAlignment = Enum.TextXAlignment.Left
-    local pad = Instance.new("UIPadding", HeaderLabel); pad.PaddingLeft = UDim.new(0, 10) -- [FIX] Padding
+    local pad = Instance.new("UIPadding", HeaderLabel); pad.PaddingLeft = UDim.new(0, 10)
     local ArrowLabel = Instance.new("TextLabel", HeaderButton); ArrowLabel.Text = sectionState and "^" or "V"; ArrowLabel.Size = UDim2.new(0, 20, 1, 0); ArrowLabel.Position = UDim2.new(1, -25, 0, 0); ArrowLabel.BackgroundTransparency = 1; ArrowLabel.TextColor3 = LibraryConfig.Theme.Accent; ArrowLabel.Font = Enum.Font.GothamBold; ArrowLabel.TextSize = 14
     local ContentFrame = Instance.new("Frame", MainFrame); ContentFrame.Size = UDim2.new(1, 0, 0, 0); ContentFrame.Position = UDim2.new(0, 0, 0, 35); ContentFrame.BackgroundTransparency = 1; ContentFrame.Visible = sectionState
     local ContentListLayout = Instance.new("UIListLayout", ContentFrame); ContentListLayout.Padding = UDim.new(0, 2); ContentListLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -167,11 +189,10 @@ function Library:CollapsibleSection(P, Title, TabKey, SectionKey)
         else MainFrame.Size = UDim2.new(0.95, 0, 0, 35); ArrowLabel.Text = "V" end
     end
     HeaderButton.MouseButton1Click:Connect(function() sectionState = not sectionState; CollapsibleStates[TabKey][SectionKey] = sectionState; ContentFrame.Visible = sectionState; updateHeight() end)
-    task.spawn(function() task.wait(0.1); updateHeight() end)
+    MainFrame.LayoutOrder = GetNextOrder(P); task.spawn(function() task.wait(0.1); updateHeight() end)
     return ContentFrame, updateHeight
 end
 
--- [CORRECAO: Adicionado metodo que faltava]
 function Library:PlayerDropdown(P, T, Tab, Key, Call)
     local Players = game:GetService("Players")
     local function GetNames() local l={} for _,p in pairs(Players:GetPlayers()) do if p~=Players.LocalPlayer then table.insert(l,p.Name) end end return l end
