@@ -1,8 +1,8 @@
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
-local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
 
 local LibraryConfig = {
     MenuOpen = true,
@@ -15,8 +15,7 @@ local LibraryConfig = {
         Outline = Color3.fromRGB(50, 50, 55),
         NotifyBg = Color3.fromRGB(25, 25, 30),
         BindWait = Color3.fromRGB(255, 50, 50)
-    },
-    FolderName = "AlphaxConfigs"
+    }
 }
 
 local Library = {}
@@ -26,6 +25,7 @@ local ActiveNotifications = {}
 local ParentObj = gethui and gethui() or CoreGui
 if ParentObj:FindFirstChild("Alphax_UI_Lib") then ParentObj.Alphax_UI_Lib:Destroy() end
 
+-- [CORREÇÃO DE ORDEM] Função simples que garante que o próximo item fique embaixo do anterior
 local function GetNextOrder(Container)
     local max = 0
     for _, c in pairs(Container:GetChildren()) do
@@ -98,7 +98,7 @@ end
 function Library:Tab(Name)
     local B = Instance.new("TextButton", UI_Elements.Tabs); B.Size=UDim2.new(0.9,0,0,35); B.BackgroundColor3=Color3.fromRGB(40,40,45); B.Text=Name; B.TextColor3=Color3.fromRGB(150,150,150); B.Font=Enum.Font.GothamBold; B.TextSize=12; Instance.new("UICorner", B).CornerRadius=UDim.new(0,4)
     local P = Instance.new("ScrollingFrame", UI_Elements.Pages); P.Size=UDim2.new(1,0,1,0); P.BackgroundTransparency=1; P.Visible=false; P.ScrollBarThickness=2
-    local LL = Instance.new("UIListLayout", P); LL.Padding=UDim.new(0,3); LL.SortOrder = Enum.SortOrder.LayoutOrder
+    local LL = Instance.new("UIListLayout", P); LL.Padding=UDim.new(0,4); LL.SortOrder = Enum.SortOrder.LayoutOrder
     Instance.new("UIPadding", P).PaddingTop=UDim.new(0,5)
     B.MouseButton1Click:Connect(function() 
         for _,x in pairs(UI_Elements.Pages:GetChildren()) do x.Visible=false end; for _,x in pairs(UI_Elements.Tabs:GetChildren()) do if x:IsA("TextButton") then x.TextColor3=Color3.fromRGB(150,150,150); x.BackgroundColor3=Color3.fromRGB(40,40,45) end end
@@ -107,7 +107,7 @@ function Library:Tab(Name)
     return P
 end
 
--- [NOVO] SECTION SIMPLES (Substitui Collapsible)
+-- [NOVO] COMPONENTE SECTION (Substitui o Collapsible que dava erro)
 function Library:Section(P, Text)
     local l = Instance.new("TextLabel", P)
     l.Size = UDim2.new(0.95, 0, 0, 25)
@@ -117,6 +117,7 @@ function Library:Section(P, Text)
     l.Font = Enum.Font.GothamBold
     l.TextSize = 14
     l.TextXAlignment = Enum.TextXAlignment.Left
+    -- [CORRECAO PADDING]
     local pad = Instance.new("UIPadding", l); pad.PaddingLeft = UDim.new(0, 5)
     l.LayoutOrder = GetNextOrder(P)
 end
@@ -126,7 +127,12 @@ function Library:Label(P, T)
     local pad = Instance.new("UIPadding", l); pad.PaddingLeft = UDim.new(0, 10)
     l.LayoutOrder = GetNextOrder(P) 
 end
-function Library:Button(P, T, C) local b=Instance.new("TextButton",P);b.Size=UDim2.new(0.95,0,0,35);b.BackgroundColor3=LibraryConfig.Theme.Accent;b.Text=T;b.TextColor3=Color3.new(1,1,1);b.Font=Enum.Font.GothamBold;b.TextSize=14;Instance.new("UICorner",b).CornerRadius=UDim.new(0,4);b.MouseButton1Click:Connect(C);b.LayoutOrder=GetNextOrder(P) end
+
+function Library:Button(P, T, C) 
+    local b=Instance.new("TextButton",P);b.Size=UDim2.new(0.95,0,0,35);b.BackgroundColor3=LibraryConfig.Theme.Accent;b.Text=T;b.TextColor3=Color3.new(1,1,1);b.Font=Enum.Font.GothamBold;b.TextSize=14;Instance.new("UICorner",b).CornerRadius=UDim.new(0,4);b.MouseButton1Click:Connect(C)
+    b.LayoutOrder=GetNextOrder(P)
+end
+
 function Library:Toggle(P, T, Tab, Key, Call)
     local b=Instance.new("TextButton",P);b.Size=UDim2.new(0.95,0,0,35);b.BackgroundColor3=Color3.fromRGB(40,40,45);b.Text="";Instance.new("UICorner",b).CornerRadius=UDim.new(0,4)
     local l=Instance.new("TextLabel",b);l.Text=T;l.Size=UDim2.new(1,-40,1,0);l.Position=UDim2.new(0,0,0,0);l.BackgroundTransparency=1;l.TextColor3=LibraryConfig.Theme.Text;l.Font=Enum.Font.Gotham;l.TextSize=12;l.TextXAlignment=Enum.TextXAlignment.Left
@@ -135,6 +141,7 @@ function Library:Toggle(P, T, Tab, Key, Call)
     local function Up() i.BackgroundColor3 = Tab[Key] and LibraryConfig.Theme.Accent or Color3.fromRGB(60,60,60) end; Up()
     b.MouseButton1Click:Connect(function() Tab[Key] = not Tab[Key]; Up(); if Call then Call(Tab[Key]) end end); b.LayoutOrder=GetNextOrder(P)
 end
+
 function Library:Dropdown(P, T, Opts, Tab, Key, Multi)
     local f = Instance.new("Frame", P); f.Size = UDim2.new(0.95, 0, 0, 35); f.BackgroundColor3 = Color3.fromRGB(40, 40, 45); f.ClipsDescendants = true; Instance.new("UICorner", f).CornerRadius = UDim.new(0, 4)
     local HeaderBtn = Instance.new("TextButton", f); HeaderBtn.Size = UDim2.new(1,0,0,35); HeaderBtn.BackgroundTransparency=1; HeaderBtn.Text=""
@@ -153,6 +160,7 @@ function Library:Dropdown(P, T, Opts, Tab, Key, Multi)
     HeaderBtn.MouseButton1Click:Connect(function() TweenService:Create(f, TweenInfo.new(0.3), {Size = UDim2.new(0.95, 0, 0, f.Size.Y.Offset == 35 and (35 + math.min(#Opts*30, 150)) or 35)}):Play() end)
     f.LayoutOrder=GetNextOrder(P)
 end
+
 function Library:Slider(P, T, Tab, Key, Min, Max)
     local f=Instance.new("Frame",P);f.Size=UDim2.new(0.95,0,0,45);f.BackgroundColor3=Color3.fromRGB(40,40,45);Instance.new("UICorner",f).CornerRadius=UDim.new(0,4)
     local l=Instance.new("TextLabel",f);l.Size=UDim2.new(1,0,0,20);l.Position=UDim2.new(0,0,0,0);l.BackgroundTransparency=1;l.TextColor3=LibraryConfig.Theme.Text;l.Font=Enum.Font.Gotham;l.TextSize=12;l.TextXAlignment=Enum.TextXAlignment.Left
@@ -165,6 +173,7 @@ function Library:Slider(P, T, Tab, Key, Min, Max)
     UserInputService.InputChanged:Connect(function(i) if drag and i.UserInputType==Enum.UserInputType.MouseMovement then local p=math.clamp((i.Position.X-b.AbsolutePosition.X)/b.AbsoluteSize.X,0,1); Tab[Key]=math.floor(Min+((Max-Min)*p)); Up() end end)
     f.LayoutOrder=GetNextOrder(P)
 end
+
 function Library:Keybind(P, T)
     local b=Instance.new("TextButton",P);b.Size=UDim2.new(0.95,0,0,35);b.BackgroundColor3=Color3.fromRGB(40,40,45);b.Text="";Instance.new("UICorner",b).CornerRadius=UDim.new(0,4)
     local l=Instance.new("TextLabel",b);l.Text=T;l.Size=UDim2.new(0.6,0,1,0);l.Position=UDim2.new(0,0,0,0);l.BackgroundTransparency=1;l.TextColor3=LibraryConfig.Theme.Text;l.Font=Enum.Font.Gotham;l.TextSize=12;l.TextXAlignment=Enum.TextXAlignment.Left
@@ -174,6 +183,7 @@ function Library:Keybind(P, T)
     b.LayoutOrder=GetNextOrder(P)
 end
 
+-- [CORREÇÃO] Player Dropdown que faltava
 function Library:PlayerDropdown(P, T, Tab, Key, Call)
     local Players = game:GetService("Players")
     local function GetNames() local l={} for _,p in pairs(Players:GetPlayers()) do if p~=Players.LocalPlayer then table.insert(l,p.Name) end end return l end
@@ -181,7 +191,7 @@ function Library:PlayerDropdown(P, T, Tab, Key, Call)
 end
 
 function Library:CopyDiscord(Link) if setclipboard then setclipboard(Link); Library:Notify("Discord Copied!", 2) end end
-function Library:Rejoin() game:GetService("TeleportService"):Teleport(game.PlaceId, game.Players.LocalPlayer) end
+function Library:Rejoin() game:GetService("TeleportService"):Teleport(game.PlaceId, game:GetService("Players").LocalPlayer) end
 function Library:ServerHop() Library:Notify("Server Hopping...", 2) end 
 
 UserInputService.InputBegan:Connect(function(input, processed)
