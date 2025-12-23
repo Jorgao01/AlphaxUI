@@ -405,12 +405,14 @@ function Library:CopyDiscord(Link) if setclipboard then setclipboard(Link); Libr
 function Library:Rejoin() game:GetService("TeleportService"):Teleport(game.PlaceId, game:GetService("Players").LocalPlayer) end
 function Library:ServerHop() Library:Notify("Server Hopping...", 2) end 
 
-local inputConn = UserInputService.InputBegan:Connect(function(input, processed)
+UserInputService.InputBegan:Connect(function(input, processed)
     if processed then return end
     if input.KeyCode == LibraryConfig.MenuKey and UI_Elements.MainFrame then 
         UI_Elements.MainFrame.Visible = not UI_Elements.MainFrame.Visible 
     end
 end)
 table.insert(Connections, inputConn)
+
+Library.Config = LibraryConfig
 
 return Library
