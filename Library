@@ -201,13 +201,70 @@ function Library:Slider(P, T, Tab, Key, Min, Max)
     f.LayoutOrder=GetNextOrder(P)
 end
 
-function Library:Keybind(P, T)
-    local b=Instance.new("TextButton",P);b.Size=UDim2.new(0.95,0,0,35);b.BackgroundColor3=Color3.fromRGB(40,40,45);b.Text="";Instance.new("UICorner",b).CornerRadius=UDim.new(0,4)
-    local l=Instance.new("TextLabel",b);l.Text=T;l.Size=UDim2.new(0.6,0,1,0);l.Position=UDim2.new(0,0,0,0);l.BackgroundTransparency=1;l.TextColor3=LibraryConfig.Theme.Text;l.Font=Enum.Font.Gotham;l.TextSize=12;l.TextXAlignment=Enum.TextXAlignment.Left
-    local pad = Instance.new("UIPadding", l); pad.PaddingLeft = UDim.new(0, 10)
-    local k=Instance.new("TextLabel",b);k.Text=LibraryConfig.MenuKey.Name;k.Size=UDim2.new(0.3,0,1,0);k.Position=UDim2.new(0.65,0,0,0);k.BackgroundTransparency=1;k.TextColor3=LibraryConfig.Theme.Accent;k.Font=Enum.Font.GothamBold;k.TextSize=12;k.TextXAlignment=Enum.TextXAlignment.Right
-    b.MouseButton1Click:Connect(function() k.Text="..."; k.TextColor3=Color3.fromRGB(255,50,50); local c; c=UserInputService.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.Keyboard then LibraryConfig.MenuKey=i.KeyCode; k.Text=i.KeyCode.Name; k.TextColor3=LibraryConfig.Theme.Accent; c:Disconnect() end end) end)
-    b.LayoutOrder=GetNextOrder(P)
+-- [ATUALIZADO] Keybind com suporte a remoção e texto limpo
+function Library:Keybind(P, T, Tab, Key, Call)
+    local b = Instance.new("TextButton", P)
+    b.Size = UDim2.new(0.95, 0, 0, 35)
+    b.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+    b.Text = ""
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 4)
+    
+    local l = Instance.new("TextLabel", b)
+    l.Text = T
+    l.Size = UDim2.new(0.6, 0, 1, 0)
+    l.Position = UDim2.new(0, 10, 0, 0) -- Ajustei padding direto na posição
+    l.BackgroundTransparency = 1
+    l.TextColor3 = LibraryConfig.Theme.Text
+    l.Font = Enum.Font.Gotham
+    l.TextSize = 12
+    l.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local k = Instance.new("TextLabel", b)
+    k.Size = UDim2.new(0.3, 0, 1, 0)
+    k.Position = UDim2.new(0.65, 0, 0, 0)
+    k.BackgroundTransparency = 1
+    k.Font = Enum.Font.GothamBold
+    k.TextSize = 12
+    k.TextXAlignment = Enum.TextXAlignment.Right
+    
+    -- Função interna para atualizar o texto visualmente
+    local function UpdateText()
+        local val = Tab[Key]
+        if val == nil or val == Enum.KeyCode.Unknown then
+            k.Text = "[ Nenhum ]" -- Texto quando não há tecla definida
+            k.TextColor3 = Color3.fromRGB(150, 150, 150)
+        else
+            k.Text = "[" .. val.Name .. "]"
+            k.TextColor3 = LibraryConfig.Theme.Accent
+        end
+    end
+    
+    UpdateText() -- Atualiza no início
+
+    b.MouseButton1Click:Connect(function() 
+        k.Text = "..."
+        k.TextColor3 = LibraryConfig.Theme.BindWait
+        
+        local inputConn
+        inputConn = UserInputService.InputBegan:Connect(function(i)
+            if i.UserInputType == Enum.UserInputType.Keyboard then
+                -- Se apertar Backspace ou Delete, remove a bind
+                if i.KeyCode == Enum.KeyCode.Backspace or i.KeyCode == Enum.KeyCode.Delete then
+                    Tab[Key] = nil
+                    if Call then Call(nil) end
+                else
+                    -- Senão, define a nova tecla
+                    Tab[Key] = i.KeyCode
+                    if Call then Call(i.KeyCode) end
+                end
+                
+                UpdateText()
+                inputConn:Disconnect()
+            end
+        end)
+    end)
+    
+    b.LayoutOrder = GetNextOrder(P)
 end
 
 -- [ATUALIZADO] PlayerDropdown que detecta e atualiza lista automaticamente
