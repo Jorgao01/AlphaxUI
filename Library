@@ -81,29 +81,139 @@ function Library:Watermark(Name)
     table.insert(Connections, conn)
 end
 
+-- [ATUALIZADO] Suporte Mobile (Botão Toggle + Arrastar com Dedo)
 function Library:Window(TitleText)
-    local Screen = Instance.new("ScreenGui", ParentObj); Screen.Name = "Alphax_UI_Lib"; Screen.ResetOnSpawn = false
+    local Screen = Instance.new("ScreenGui", ParentObj)
+    Screen.Name = "Alphax_UI_Lib"
+    Screen.ResetOnSpawn = false
     UI_Elements.ScreenGui = Screen
     
-    local NH = Instance.new("Frame", Screen); NH.Name="NotifyHolder"; NH.Size=UDim2.new(0,300,1,0); NH.Position=UDim2.new(1,-310,0,0); NH.BackgroundTransparency=1; UI_Elements.NotifyHolder = NH
-    local Main = Instance.new("Frame", Screen); Main.Size=UDim2.new(0,550,0,500); Main.Position=UDim2.new(0.5,-275,0.5,-250); Main.BackgroundColor3=LibraryConfig.Theme.Main
-    Instance.new("UICorner", Main).CornerRadius=UDim.new(0,8); Instance.new("UIStroke", Main).Color=LibraryConfig.Theme.Outline; UI_Elements.MainFrame = Main 
-    local Top = Instance.new("Frame", Main); Top.Size=UDim2.new(1,0,0,45); Top.BackgroundTransparency=1
-    local Title = Instance.new("TextLabel", Top); Title.Text=TitleText; Title.TextColor3=LibraryConfig.Theme.Accent; Title.Font=Enum.Font.GothamBold; Title.TextSize=18; Title.Size=UDim2.new(1,-50,1,0); Title.Position=UDim2.new(0,20,0,0); Title.TextXAlignment=Enum.TextXAlignment.Left; Title.BackgroundTransparency=1
-    local Close = Instance.new("TextButton", Top); Close.Text="X"; Close.Size=UDim2.new(0,45,1,0); Close.Position=UDim2.new(1,-45,0,0); Close.BackgroundTransparency=1; Close.TextColor3=Color3.new(0.8,0.2,0.2); Close.Font=Enum.Font.GothamBold; Close.TextSize=18
-    Close.MouseButton1Click:Connect(function() Main.Visible=false end)
-    local TabsC = Instance.new("Frame", Main); TabsC.Size=UDim2.new(0,130,1,-55); TabsC.Position=UDim2.new(0,10,0,45); TabsC.BackgroundColor3=LibraryConfig.Theme.Container; Instance.new("UICorner", TabsC).CornerRadius=UDim.new(0,6)
-    Instance.new("UIListLayout", TabsC).Padding=UDim.new(0,5); Instance.new("UIPadding", TabsC).PaddingTop=UDim.new(0,10)
-    UI_Elements.Tabs=TabsC; UI_Elements.Pages=Instance.new("Frame", Main); UI_Elements.Pages.Size=UDim2.new(1,-155,1,-55); UI_Elements.Pages.Position=UDim2.new(0,150,0,45); UI_Elements.Pages.BackgroundTransparency=1; UI_Elements.Pages.Parent=Main
+    -- Container das Notificações
+    local NH = Instance.new("Frame", Screen)
+    NH.Name = "NotifyHolder"
+    NH.Size = UDim2.new(0, 300, 1, 0)
+    NH.Position = UDim2.new(1, -310, 0, 0)
+    NH.BackgroundTransparency = 1
+    UI_Elements.NotifyHolder = NH
     
-    local drag, startPos; Top.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then drag=i.Position; startPos=Main.Position end end)
-    UserInputService.InputChanged:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseMovement and drag then local d=i.Position-drag; Main.Position=UDim2.new(startPos.X.Scale, startPos.X.Offset+d.X, startPos.Y.Scale, startPos.Y.Offset+d.Y) end end)
-    UserInputService.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then drag=nil end end)
+    -- Main Frame (Janela Principal)
+    local Main = Instance.new("Frame", Screen)
+    Main.Size = UDim2.new(0, 550, 0, 500)
+    -- Centraliza na tela
+    Main.Position = UDim2.new(0.5, -275, 0.5, -250) 
+    Main.BackgroundColor3 = LibraryConfig.Theme.Main
+    Main.Visible = true -- Começa visível ou use LibraryConfig.MenuOpen
+    
+    Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 8)
+    Instance.new("UIStroke", Main).Color = LibraryConfig.Theme.Outline
+    UI_Elements.MainFrame = Main 
+    
+    -- Barra Superior (Top Bar)
+    local Top = Instance.new("Frame", Main)
+    Top.Size = UDim2.new(1, 0, 0, 45)
+    Top.BackgroundTransparency = 1
+    
+    local Title = Instance.new("TextLabel", Top)
+    Title.Text = TitleText
+    Title.TextColor3 = LibraryConfig.Theme.Accent
+    Title.Font = Enum.Font.GothamBold
+    Title.TextSize = 18
+    Title.Size = UDim2.new(1, -50, 1, 0)
+    Title.Position = UDim2.new(0, 20, 0, 0)
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+    Title.BackgroundTransparency = 1
+    
+    local Close = Instance.new("TextButton", Top)
+    Close.Text = "X"
+    Close.Size = UDim2.new(0, 45, 1, 0)
+    Close.Position = UDim2.new(1, -45, 0, 0)
+    Close.BackgroundTransparency = 1
+    Close.TextColor3 = Color3.new(0.8, 0.2, 0.2)
+    Close.Font = Enum.Font.GothamBold
+    Close.TextSize = 18
+    Close.MouseButton1Click:Connect(function() Main.Visible = false end)
+    
+    -- Container das Abas e Páginas
+    local TabsC = Instance.new("Frame", Main)
+    TabsC.Size = UDim2.new(0, 130, 1, -55)
+    TabsC.Position = UDim2.new(0, 10, 0, 45)
+    TabsC.BackgroundColor3 = LibraryConfig.Theme.Container
+    Instance.new("UICorner", TabsC).CornerRadius = UDim.new(0, 6)
+    Instance.new("UIListLayout", TabsC).Padding = UDim.new(0, 5)
+    Instance.new("UIPadding", TabsC).PaddingTop = UDim.new(0, 10)
+    UI_Elements.Tabs = TabsC
+    
+    UI_Elements.Pages = Instance.new("Frame", Main)
+    UI_Elements.Pages.Size = UDim2.new(1, -155, 1, -55)
+    UI_Elements.Pages.Position = UDim2.new(0, 150, 0, 45)
+    UI_Elements.Pages.BackgroundTransparency = 1
+    UI_Elements.Pages.Parent = Main
+    
+    -- [SISTEMA DE ARRASTAR ATUALIZADO PARA MOBILE]
+    local drag, startPos, dragStart
+    
+    local function UpdateInput(input)
+        local delta = input.Position - dragStart
+        Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+    
+    Top.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            drag = true
+            dragStart = input.Position
+            startPos = Main.Position
+            
+            -- Para resetar o drag se soltar o dedo/mouse
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    drag = false
+                end
+            end)
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if drag and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            UpdateInput(input)
+        end
+    end)
     
     if UserInputService.TouchEnabled then
-       local MobBtn = Instance.new("TextButton", Screen); MobBtn.Size=UDim2.new(0,50,0,50); MobBtn.Position=UDim2.new(0,20,0,50); MobBtn.BackgroundColor3=LibraryConfig.Theme.Main; MobBtn.Text="UI"; MobBtn.TextColor3=LibraryConfig.Theme.Accent
-       Instance.new("UICorner", MobBtn).CornerRadius=UDim.new(0,12); Instance.new("UIStroke", MobBtn).Color=LibraryConfig.Theme.Outline
-       MobBtn.MouseButton1Click:Connect(function() Main.Visible = not Main.Visible end)
+       local MobBtn = Instance.new("TextButton", Screen)
+       MobBtn.Name = "MobileToggle"
+       MobBtn.Size = UDim2.new(0, 50, 0, 50)
+       -- Posição segura (meio da esquerda) para não atrapalhar controles do Roblox
+       MobBtn.Position = UDim2.new(0, 20, 0.4, 0) 
+       MobBtn.BackgroundColor3 = LibraryConfig.Theme.Main
+       MobBtn.Text = "MENU"
+       MobBtn.TextColor3 = LibraryConfig.Theme.Accent
+       MobBtn.Font = Enum.Font.GothamBold
+       MobBtn.TextSize = 12
+       MobBtn.BackgroundTransparency = 0.2
+       
+       Instance.new("UICorner", MobBtn).CornerRadius = UDim.new(0, 8)
+       Instance.new("UIStroke", MobBtn).Color = LibraryConfig.Theme.Outline
+       
+       MobBtn.MouseButton1Click:Connect(function() 
+           Main.Visible = not Main.Visible 
+       end)
+       
+       -- Torna o botão Mobile arrastável também (opcional, para não atrapalhar)
+       local mDrag, mStart, mPos
+       MobBtn.InputBegan:Connect(function(i) 
+           if i.UserInputType == Enum.UserInputType.Touch then 
+               mDrag = true; mStart = i.Position; mPos = MobBtn.Position 
+           end 
+       end)
+       UserInputService.InputChanged:Connect(function(i) 
+           if mDrag and i.UserInputType == Enum.UserInputType.Touch then 
+               local d = i.Position - mStart
+               MobBtn.Position = UDim2.new(mPos.X.Scale, mPos.X.Offset + d.X, mPos.Y.Scale, mPos.Y.Offset + d.Y)
+           end 
+       end)
+       UserInputService.InputEnded:Connect(function(i) 
+           if i.UserInputType == Enum.UserInputType.Touch then mDrag = false end 
+       end)
     end
 end
 
