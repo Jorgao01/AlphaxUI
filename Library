@@ -21,11 +21,11 @@ local LibraryConfig = {
 local Library = {}
 local UI_Elements = {}
 local ActiveNotifications = {}
+local Connections = {} -- Armazena conexões para limpar depois
 
 local ParentObj = gethui and gethui() or CoreGui
 if ParentObj:FindFirstChild("Alphax_UI_Lib") then ParentObj.Alphax_UI_Lib:Destroy() end
 
--- [CORREÇÃO DE ORDEM] Função simples que garante que o próximo item fique embaixo do anterior
 local function GetNextOrder(Container)
     local max = 0
     for _, c in pairs(Container:GetChildren()) do
@@ -34,6 +34,15 @@ local function GetNextOrder(Container)
         end
     end
     return max + 1
+end
+
+-- [NOVO] Função para fechar a UI completamente
+function Library:Unload()
+    if UI_Elements.ScreenGui then UI_Elements.ScreenGui:Destroy() end
+    for _, conn in pairs(Connections) do conn:Disconnect() end
+    table.clear(Connections)
+    table.clear(Library)
+    table.clear(UI_Elements)
 end
 
 function Library:Notify(Text, Duration)
@@ -68,11 +77,14 @@ function Library:Watermark(Name)
     Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 4); Instance.new("UIStroke", Frame).Color = LibraryConfig.Theme.Accent
     local Label = Instance.new("TextLabel", Frame); Label.BackgroundTransparency = 1; Label.Size = UDim2.new(0,0,1,0); Label.Position = UDim2.new(0, 10, 0, 0); Label.AutomaticSize = Enum.AutomaticSize.X; Label.Font = Enum.Font.GothamBold; Label.TextSize = 12; Label.TextColor3 = LibraryConfig.Theme.Text
     Instance.new("UIPadding", Frame).PaddingRight = UDim.new(0, 10)
-    RunService.RenderStepped:Connect(function() if Frame.Parent then local fps = math.floor(1 / RunService.RenderStepped:Wait()); Label.Text = string.format("%s  |  FPS: %d", Name, fps) end end)
+    local conn = RunService.RenderStepped:Connect(function() if Frame.Parent then local fps = math.floor(1 / RunService.RenderStepped:Wait()); Label.Text = string.format("%s  |  FPS: %d", Name, fps) end end)
+    table.insert(Connections, conn)
 end
 
 function Library:Window(TitleText)
     local Screen = Instance.new("ScreenGui", ParentObj); Screen.Name = "Alphax_UI_Lib"; Screen.ResetOnSpawn = false
+    UI_Elements.ScreenGui = Screen
+    
     local NH = Instance.new("Frame", Screen); NH.Name="NotifyHolder"; NH.Size=UDim2.new(0,300,1,0); NH.Position=UDim2.new(1,-310,0,0); NH.BackgroundTransparency=1; UI_Elements.NotifyHolder = NH
     local Main = Instance.new("Frame", Screen); Main.Size=UDim2.new(0,550,0,500); Main.Position=UDim2.new(0.5,-275,0.5,-250); Main.BackgroundColor3=LibraryConfig.Theme.Main
     Instance.new("UICorner", Main).CornerRadius=UDim.new(0,8); Instance.new("UIStroke", Main).Color=LibraryConfig.Theme.Outline; UI_Elements.MainFrame = Main 
@@ -107,17 +119,8 @@ function Library:Tab(Name)
     return P
 end
 
--- [NOVO] COMPONENTE SECTION (Substitui o Collapsible que dava erro)
 function Library:Section(P, Text)
-    local l = Instance.new("TextLabel", P)
-    l.Size = UDim2.new(0.95, 0, 0, 25)
-    l.BackgroundTransparency = 1
-    l.Text = Text
-    l.TextColor3 = LibraryConfig.Theme.Accent
-    l.Font = Enum.Font.GothamBold
-    l.TextSize = 14
-    l.TextXAlignment = Enum.TextXAlignment.Left
-    -- [CORRECAO PADDING]
+    local l = Instance.new("TextLabel", P); l.Size = UDim2.new(0.95, 0, 0, 25); l.BackgroundTransparency = 1; l.Text = Text; l.TextColor3 = LibraryConfig.Theme.Accent; l.Font = Enum.Font.GothamBold; l.TextSize = 14; l.TextXAlignment = Enum.TextXAlignment.Left
     local pad = Instance.new("UIPadding", l); pad.PaddingLeft = UDim.new(0, 5)
     l.LayoutOrder = GetNextOrder(P)
 end
@@ -142,23 +145,47 @@ function Library:Toggle(P, T, Tab, Key, Call)
     b.MouseButton1Click:Connect(function() Tab[Key] = not Tab[Key]; Up(); if Call then Call(Tab[Key]) end end); b.LayoutOrder=GetNextOrder(P)
 end
 
+-- [ATUALIZADO] Dropdown agora tem função de Refresh
 function Library:Dropdown(P, T, Opts, Tab, Key, Multi)
     local f = Instance.new("Frame", P); f.Size = UDim2.new(0.95, 0, 0, 35); f.BackgroundColor3 = Color3.fromRGB(40, 40, 45); f.ClipsDescendants = true; Instance.new("UICorner", f).CornerRadius = UDim.new(0, 4)
     local HeaderBtn = Instance.new("TextButton", f); HeaderBtn.Size = UDim2.new(1,0,0,35); HeaderBtn.BackgroundTransparency=1; HeaderBtn.Text=""
     local l = Instance.new("TextLabel", f); l.Text = T .. ": " .. (Multi and "..." or (Tab[Key] or "")); l.Size = UDim2.new(1, -35, 0, 35); l.Position = UDim2.new(0, 0, 0, 0); l.BackgroundTransparency = 1; l.TextColor3 = LibraryConfig.Theme.Text; l.Font = Enum.Font.Gotham; l.TextSize = 12; l.TextXAlignment = Enum.TextXAlignment.Left
     local padLabel = Instance.new("UIPadding", l); padLabel.PaddingLeft = UDim.new(0, 10)
-    local lst = Instance.new("ScrollingFrame", f); lst.Size = UDim2.new(1, 0, 0, 150); lst.Position = UDim2.new(0, 0, 0, 35); lst.BackgroundColor3 = Color3.fromRGB(35, 35, 40); lst.ScrollBarThickness = 4; lst.BorderSizePixel = 0; lst.CanvasSize = UDim2.new(0,0,0,#Opts*30)
+    local lst = Instance.new("ScrollingFrame", f); lst.Size = UDim2.new(1, 0, 0, 150); lst.Position = UDim2.new(0, 0, 0, 35); lst.BackgroundColor3 = Color3.fromRGB(35, 35, 40); lst.ScrollBarThickness = 4; lst.BorderSizePixel = 0
     local pad = Instance.new("UIPadding", lst); pad.PaddingLeft = UDim.new(0, 10); pad.PaddingTop = UDim.new(0, 5)
     Instance.new("UIListLayout", lst).SortOrder = Enum.SortOrder.LayoutOrder
-    for _, o in pairs(Opts) do
-        local ob = Instance.new("TextButton", lst); ob.Size = UDim2.new(1, 0, 0, 30); ob.BackgroundColor3 = Color3.fromRGB(35, 35, 40); ob.Text = o; ob.TextColor3 = Color3.fromRGB(200, 200, 200); ob.Font = Enum.Font.Gotham; ob.TextSize = 12; ob.BorderSizePixel = 0; ob.TextXAlignment = Enum.TextXAlignment.Left
-        ob.MouseButton1Click:Connect(function() 
-            if Multi then Tab[Key][o] = not Tab[Key][o]; ob.TextColor3 = Tab[Key][o] and LibraryConfig.Theme.Accent or Color3.fromRGB(200, 200, 200)
-            else Tab[Key] = o; l.Text = T .. ": " .. o; TweenService:Create(f, TweenInfo.new(0.3), {Size = UDim2.new(0.95, 0, 0, 35)}):Play() end
-        end)
+    
+    local function UpdateList(NewOpts)
+        for _, child in pairs(lst:GetChildren()) do if child:IsA("TextButton") then child:Destroy() end end
+        lst.CanvasSize = UDim2.new(0,0,0,#NewOpts*30)
+        
+        for _, o in pairs(NewOpts) do
+            local ob = Instance.new("TextButton", lst); ob.Size = UDim2.new(1, 0, 0, 30); ob.BackgroundColor3 = Color3.fromRGB(35, 35, 40); ob.Text = o; ob.TextColor3 = Color3.fromRGB(200, 200, 200); ob.Font = Enum.Font.Gotham; ob.TextSize = 12; ob.BorderSizePixel = 0; ob.TextXAlignment = Enum.TextXAlignment.Left
+            ob.MouseButton1Click:Connect(function() 
+                if Multi then 
+                    Tab[Key][o] = not Tab[Key][o]; ob.TextColor3 = Tab[Key][o] and LibraryConfig.Theme.Accent or Color3.fromRGB(200, 200, 200)
+                else 
+                    Tab[Key] = o; l.Text = T .. ": " .. o; TweenService:Create(f, TweenInfo.new(0.3), {Size = UDim2.new(0.95, 0, 0, 35)}):Play() 
+                end
+            end)
+        end
+        -- Update dropdown height if open
+        if f.Size.Y.Offset > 35 then
+            TweenService:Create(f, TweenInfo.new(0.3), {Size = UDim2.new(0.95, 0, 0, 35 + math.min(#NewOpts*30, 150))}):Play()
+        end
     end
-    HeaderBtn.MouseButton1Click:Connect(function() TweenService:Create(f, TweenInfo.new(0.3), {Size = UDim2.new(0.95, 0, 0, f.Size.Y.Offset == 35 and (35 + math.min(#Opts*30, 150)) or 35)}):Play() end)
+    UpdateList(Opts)
+    
+    HeaderBtn.MouseButton1Click:Connect(function() 
+        local contentHeight = 0
+        for _,c in pairs(lst:GetChildren()) do if c:IsA("TextButton") then contentHeight = contentHeight + 1 end end
+        TweenService:Create(f, TweenInfo.new(0.3), {Size = UDim2.new(0.95, 0, 0, f.Size.Y.Offset == 35 and (35 + math.min(contentHeight*30, 150)) or 35)}):Play() 
+    end)
     f.LayoutOrder=GetNextOrder(P)
+    
+    return {
+        Refresh = function(self, new_opts) UpdateList(new_opts) end
+    }
 end
 
 function Library:Slider(P, T, Tab, Key, Min, Max)
@@ -183,20 +210,40 @@ function Library:Keybind(P, T)
     b.LayoutOrder=GetNextOrder(P)
 end
 
--- [CORREÇÃO] Player Dropdown que faltava
+-- [ATUALIZADO] PlayerDropdown que detecta e atualiza lista automaticamente
 function Library:PlayerDropdown(P, T, Tab, Key, Call)
-    local Players = game:GetService("Players")
-    local function GetNames() local l={} for _,p in pairs(Players:GetPlayers()) do if p~=Players.LocalPlayer then table.insert(l,p.Name) end end return l end
-    Library:Dropdown(P, T, GetNames(), Tab, Key, false)
+    -- Cria o dropdown inicialmente vazio
+    local DropdownController = Library:Dropdown(P, T, {}, Tab, Key, false)
+    
+    local function UpdatePlayers()
+        local Names = {}
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= Players.LocalPlayer then
+                table.insert(Names, p.Name)
+            end
+        end
+        -- Usa a nova função Refresh do Dropdown
+        DropdownController:Refresh(Names)
+    end
+    
+    -- Conecta eventos e guarda na tabela Connections pra limpar no Unload
+    table.insert(Connections, Players.PlayerAdded:Connect(UpdatePlayers))
+    table.insert(Connections, Players.PlayerRemoving:Connect(UpdatePlayers))
+    
+    -- Atualização inicial
+    UpdatePlayers()
 end
 
 function Library:CopyDiscord(Link) if setclipboard then setclipboard(Link); Library:Notify("Discord Copied!", 2) end end
 function Library:Rejoin() game:GetService("TeleportService"):Teleport(game.PlaceId, game:GetService("Players").LocalPlayer) end
 function Library:ServerHop() Library:Notify("Server Hopping...", 2) end 
 
-UserInputService.InputBegan:Connect(function(input, processed)
+local inputConn = UserInputService.InputBegan:Connect(function(input, processed)
     if processed then return end
-    if input.KeyCode == LibraryConfig.MenuKey then UI_Elements.MainFrame.Visible = not UI_Elements.MainFrame.Visible end
+    if input.KeyCode == LibraryConfig.MenuKey and UI_Elements.MainFrame then 
+        UI_Elements.MainFrame.Visible = not UI_Elements.MainFrame.Visible 
+    end
 end)
+table.insert(Connections, inputConn)
 
 return Library
