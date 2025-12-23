@@ -21,7 +21,7 @@ local LibraryConfig = {
 local Library = {}
 local UI_Elements = {}
 local ActiveNotifications = {}
-local Connections = {} -- Armazena conexões para limpar depois
+local Connections = {} 
 
 local ParentObj = gethui and gethui() or CoreGui
 if ParentObj:FindFirstChild("Alphax_UI_Lib") then ParentObj.Alphax_UI_Lib:Destroy() end
@@ -36,7 +36,6 @@ local function GetNextOrder(Container)
     return max + 1
 end
 
--- [NOVO] Função para fechar a UI completamente
 function Library:Unload()
     if UI_Elements.ScreenGui then UI_Elements.ScreenGui:Destroy() end
     for _, conn in pairs(Connections) do conn:Disconnect() end
@@ -81,14 +80,12 @@ function Library:Watermark(Name)
     table.insert(Connections, conn)
 end
 
--- [ATUALIZADO] Suporte Mobile (Botão Toggle + Arrastar com Dedo)
 function Library:Window(TitleText)
     local Screen = Instance.new("ScreenGui", ParentObj)
     Screen.Name = "Alphax_UI_Lib"
     Screen.ResetOnSpawn = false
     UI_Elements.ScreenGui = Screen
     
-    -- Container das Notificações
     local NH = Instance.new("Frame", Screen)
     NH.Name = "NotifyHolder"
     NH.Size = UDim2.new(0, 300, 1, 0)
@@ -98,17 +95,24 @@ function Library:Window(TitleText)
     
     -- Main Frame (Janela Principal)
     local Main = Instance.new("Frame", Screen)
-    Main.Size = UDim2.new(0, 550, 0, 500)
-    -- Centraliza na tela
-    Main.Position = UDim2.new(0.5, -275, 0.5, -250) 
+    -- [ANIMAÇÃO] Configuração Inicial
+    Main.AnchorPoint = Vector2.new(0.5, 0.5) -- Centraliza o ponto de origem
+    Main.Position = UDim2.new(0.5, 0, 0.5, 0) -- Centraliza na tela
+    Main.Size = UDim2.new(0, 0, 0, 0) -- Começa invisível (tamanho 0)
+    Main.ClipsDescendants = true -- Impede que o conteúdo "vaze" enquanto abre
+    
     Main.BackgroundColor3 = LibraryConfig.Theme.Main
-    Main.Visible = true -- Começa visível ou use LibraryConfig.MenuOpen
+    Main.Visible = true 
     
     Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 8)
     Instance.new("UIStroke", Main).Color = LibraryConfig.Theme.Outline
     UI_Elements.MainFrame = Main 
+
+    -- [ANIMAÇÃO] Executa a abertura
+    local TargetSize = UDim2.new(0, 550, 0, 500)
+    TweenService:Create(Main, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = TargetSize}):Play()
     
-    -- Barra Superior (Top Bar)
+    -- Top Bar
     local Top = Instance.new("Frame", Main)
     Top.Size = UDim2.new(1, 0, 0, 45)
     Top.BackgroundTransparency = 1
@@ -131,9 +135,13 @@ function Library:Window(TitleText)
     Close.TextColor3 = Color3.new(0.8, 0.2, 0.2)
     Close.Font = Enum.Font.GothamBold
     Close.TextSize = 18
-    Close.MouseButton1Click:Connect(function() Main.Visible = false end)
+    Close.MouseButton1Click:Connect(function() 
+        -- Animação ao fechar pelo X
+        TweenService:Create(Main, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0,0,0,0)}):Play()
+        task.wait(0.4)
+        Main.Visible = false 
+    end)
     
-    -- Container das Abas e Páginas
     local TabsC = Instance.new("Frame", Main)
     TabsC.Size = UDim2.new(0, 130, 1, -55)
     TabsC.Position = UDim2.new(0, 10, 0, 45)
@@ -149,7 +157,7 @@ function Library:Window(TitleText)
     UI_Elements.Pages.BackgroundTransparency = 1
     UI_Elements.Pages.Parent = Main
     
-    -- [SISTEMA DE ARRASTAR ATUALIZADO PARA MOBILE]
+    -- Drag System
     local drag, startPos, dragStart
     
     local function UpdateInput(input)
@@ -163,7 +171,6 @@ function Library:Window(TitleText)
             dragStart = input.Position
             startPos = Main.Position
             
-            -- Para resetar o drag se soltar o dedo/mouse
             input.Changed:Connect(function()
                 if input.UserInputState == Enum.UserInputState.End then
                     drag = false
@@ -182,7 +189,6 @@ function Library:Window(TitleText)
        local MobBtn = Instance.new("TextButton", Screen)
        MobBtn.Name = "MobileToggle"
        MobBtn.Size = UDim2.new(0, 50, 0, 50)
-       -- Posição segura (meio da esquerda) para não atrapalhar controles do Roblox
        MobBtn.Position = UDim2.new(0, 20, 0.4, 0) 
        MobBtn.BackgroundColor3 = LibraryConfig.Theme.Main
        MobBtn.Text = "MENU"
@@ -198,7 +204,6 @@ function Library:Window(TitleText)
            Main.Visible = not Main.Visible 
        end)
        
-       -- Torna o botão Mobile arrastável também (opcional, para não atrapalhar)
        local mDrag, mStart, mPos
        MobBtn.InputBegan:Connect(function(i) 
            if i.UserInputType == Enum.UserInputType.Touch then 
@@ -255,7 +260,6 @@ function Library:Toggle(P, T, Tab, Key, Call)
     b.MouseButton1Click:Connect(function() Tab[Key] = not Tab[Key]; Up(); if Call then Call(Tab[Key]) end end); b.LayoutOrder=GetNextOrder(P)
 end
 
--- [ATUALIZADO] Dropdown agora tem função de Refresh
 function Library:Dropdown(P, T, Opts, Tab, Key, Multi)
     local f = Instance.new("Frame", P); f.Size = UDim2.new(0.95, 0, 0, 35); f.BackgroundColor3 = Color3.fromRGB(40, 40, 45); f.ClipsDescendants = true; Instance.new("UICorner", f).CornerRadius = UDim.new(0, 4)
     local HeaderBtn = Instance.new("TextButton", f); HeaderBtn.Size = UDim2.new(1,0,0,35); HeaderBtn.BackgroundTransparency=1; HeaderBtn.Text=""
@@ -279,7 +283,6 @@ function Library:Dropdown(P, T, Opts, Tab, Key, Multi)
                 end
             end)
         end
-        -- Update dropdown height if open
         if f.Size.Y.Offset > 35 then
             TweenService:Create(f, TweenInfo.new(0.3), {Size = UDim2.new(0.95, 0, 0, 35 + math.min(#NewOpts*30, 150))}):Play()
         end
@@ -292,10 +295,7 @@ function Library:Dropdown(P, T, Opts, Tab, Key, Multi)
         TweenService:Create(f, TweenInfo.new(0.3), {Size = UDim2.new(0.95, 0, 0, f.Size.Y.Offset == 35 and (35 + math.min(contentHeight*30, 150)) or 35)}):Play() 
     end)
     f.LayoutOrder=GetNextOrder(P)
-    
-    return {
-        Refresh = function(self, new_opts) UpdateList(new_opts) end
-    }
+    return { Refresh = function(self, new_opts) UpdateList(new_opts) end }
 end
 
 function Library:Slider(P, T, Tab, Key, Min, Max)
@@ -311,7 +311,6 @@ function Library:Slider(P, T, Tab, Key, Min, Max)
     f.LayoutOrder=GetNextOrder(P)
 end
 
--- [ATUALIZADO] Keybind com suporte a remoção e texto limpo
 function Library:Keybind(P, T, Tab, Key, Call)
     local b = Instance.new("TextButton", P)
     b.Size = UDim2.new(0.95, 0, 0, 35)
@@ -322,7 +321,7 @@ function Library:Keybind(P, T, Tab, Key, Call)
     local l = Instance.new("TextLabel", b)
     l.Text = T
     l.Size = UDim2.new(0.6, 0, 1, 0)
-    l.Position = UDim2.new(0, 10, 0, 0) -- Ajustei padding direto na posição
+    l.Position = UDim2.new(0, 10, 0, 0)
     l.BackgroundTransparency = 1
     l.TextColor3 = LibraryConfig.Theme.Text
     l.Font = Enum.Font.Gotham
@@ -337,51 +336,41 @@ function Library:Keybind(P, T, Tab, Key, Call)
     k.TextSize = 12
     k.TextXAlignment = Enum.TextXAlignment.Right
     
-    -- Função interna para atualizar o texto visualmente
     local function UpdateText()
         local val = Tab[Key]
         if val == nil or val == Enum.KeyCode.Unknown then
-            k.Text = "[ Nenhum ]" -- Texto quando não há tecla definida
+            k.Text = "[ Nenhum ]" 
             k.TextColor3 = Color3.fromRGB(150, 150, 150)
         else
             k.Text = "[" .. val.Name .. "]"
             k.TextColor3 = LibraryConfig.Theme.Accent
         end
     end
-    
-    UpdateText() -- Atualiza no início
+    UpdateText() 
 
     b.MouseButton1Click:Connect(function() 
         k.Text = "..."
         k.TextColor3 = LibraryConfig.Theme.BindWait
-        
         local inputConn
         inputConn = UserInputService.InputBegan:Connect(function(i)
             if i.UserInputType == Enum.UserInputType.Keyboard then
-                -- Se apertar Backspace ou Delete, remove a bind
                 if i.KeyCode == Enum.KeyCode.Backspace or i.KeyCode == Enum.KeyCode.Delete then
                     Tab[Key] = nil
                     if Call then Call(nil) end
                 else
-                    -- Senão, define a nova tecla
                     Tab[Key] = i.KeyCode
                     if Call then Call(i.KeyCode) end
                 end
-                
                 UpdateText()
                 inputConn:Disconnect()
             end
         end)
     end)
-    
     b.LayoutOrder = GetNextOrder(P)
 end
 
--- [ATUALIZADO] PlayerDropdown que detecta e atualiza lista automaticamente
 function Library:PlayerDropdown(P, T, Tab, Key, Call)
-    -- Cria o dropdown inicialmente vazio
     local DropdownController = Library:Dropdown(P, T, {}, Tab, Key, false)
-    
     local function UpdatePlayers()
         local Names = {}
         for _, p in pairs(Players:GetPlayers()) do
@@ -389,15 +378,10 @@ function Library:PlayerDropdown(P, T, Tab, Key, Call)
                 table.insert(Names, p.Name)
             end
         end
-        -- Usa a nova função Refresh do Dropdown
         DropdownController:Refresh(Names)
     end
-    
-    -- Conecta eventos e guarda na tabela Connections pra limpar no Unload
     table.insert(Connections, Players.PlayerAdded:Connect(UpdatePlayers))
     table.insert(Connections, Players.PlayerRemoving:Connect(UpdatePlayers))
-    
-    -- Atualização inicial
     UpdatePlayers()
 end
 
@@ -405,7 +389,7 @@ function Library:CopyDiscord(Link) if setclipboard then setclipboard(Link); Libr
 function Library:Rejoin() game:GetService("TeleportService"):Teleport(game.PlaceId, game:GetService("Players").LocalPlayer) end
 function Library:ServerHop() Library:Notify("Server Hopping...", 2) end 
 
-UserInputService.InputBegan:Connect(function(input, processed)
+local inputConn = UserInputService.InputBegan:Connect(function(input, processed)
     if processed then return end
     if input.KeyCode == LibraryConfig.MenuKey and UI_Elements.MainFrame then 
         UI_Elements.MainFrame.Visible = not UI_Elements.MainFrame.Visible 
