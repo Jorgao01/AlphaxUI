@@ -83,7 +83,7 @@ function Library:Watermark(Name)
     Frame.Size = UDim2.new(0, 0, 0, 25)
     Frame.Position = UDim2.new(0.015, 0, 0.015, 0)
     Frame.AutomaticSize = Enum.AutomaticSize.X
-    Frame.ZIndex = 10 -- Garante que fique acima de outros elementos base
+    Frame.ZIndex = 10 
 
     Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 4)
     Instance.new("UIStroke", Frame).Color = LibraryConfig.Theme.Accent
@@ -101,7 +101,7 @@ function Library:Watermark(Name)
     
     local lastUpdate = 0
     local conn = RunService.RenderStepped:Connect(function(deltaTime)
-        if not Frame.Parent then return end -- Para se o frame for deletado
+        if not Frame.Parent then return end 
         
         lastUpdate = lastUpdate + deltaTime
         if lastUpdate >= 0.1 then
@@ -129,11 +129,10 @@ function Library:Window(TitleText)
     
     -- Main Frame (Janela Principal)
     local Main = Instance.new("Frame", Screen)
-    -- [ANIMAÇÃO] Configuração Inicial
-    Main.AnchorPoint = Vector2.new(0.5, 0.5) -- Centraliza o ponto de origem
-    Main.Position = UDim2.new(0.5, 0, 0.5, 0) -- Centraliza na tela
-    Main.Size = UDim2.new(0, 0, 0, 0) -- Começa invisível (tamanho 0)
-    Main.ClipsDescendants = true -- Impede que o conteúdo "vaze" enquanto abre
+    Main.AnchorPoint = Vector2.new(0.5, 0.5) 
+    Main.Position = UDim2.new(0.5, 0, 0.5, 0) 
+    Main.Size = UDim2.new(0, 0, 0, 0) 
+    Main.ClipsDescendants = true 
     
     Main.BackgroundColor3 = LibraryConfig.Theme.Main
     Main.Visible = true 
@@ -142,7 +141,6 @@ function Library:Window(TitleText)
     Instance.new("UIStroke", Main).Color = LibraryConfig.Theme.Outline
     UI_Elements.MainFrame = Main 
 
-    -- [ANIMAÇÃO] Executa a abertura
     local TargetSize = UDim2.new(0, 550, 0, 500)
     TweenService:Create(Main, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = TargetSize}):Play()
     
@@ -170,24 +168,34 @@ function Library:Window(TitleText)
     Close.Font = Enum.Font.GothamBold
     Close.TextSize = 18
     Close.MouseButton1Click:Connect(function() 
-        -- Animação ao fechar pelo X
         TweenService:Create(Main, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0,0,0,0)}):Play()
         task.wait(0.4)
         Main.Visible = false 
     end)
     
+    -- [CORREÇÃO] Sidebar das Abas (TabsC)
     local TabsC = Instance.new("Frame", Main)
     TabsC.Size = UDim2.new(0, 130, 1, -55)
-    TabsC.Position = UDim2.new(0, 5, 0, 45)
+    -- Mudado de 5 para 15 para dar espaço da borda esquerda
+    TabsC.Position = UDim2.new(0, 15, 0, 45) 
     TabsC.BackgroundColor3 = LibraryConfig.Theme.Container
+    
     Instance.new("UICorner", TabsC).CornerRadius = UDim.new(0, 6)
-    Instance.new("UIListLayout", TabsC).Padding = UDim.new(0, 5)
+    
+    -- [CORREÇÃO] Layout das abas
+    local TabList = Instance.new("UIListLayout", TabsC)
+    TabList.Padding = UDim.new(0, 5)
+    -- Adicionado alinhamento central para que os botões fiquem centralizados na sidebar
+    TabList.HorizontalAlignment = Enum.HorizontalAlignment.Center 
+    
     Instance.new("UIPadding", TabsC).PaddingTop = UDim.new(0, 10)
     UI_Elements.Tabs = TabsC
     
     UI_Elements.Pages = Instance.new("Frame", Main)
-    UI_Elements.Pages.Size = UDim2.new(1, -155, 1, -55)
-    UI_Elements.Pages.Position = UDim2.new(0, 150, 0, 45)
+    -- Ajustado tamanho e posição da área das páginas para compensar a sidebar
+    UI_Elements.Pages.Size = UDim2.new(1, -170, 1, -55) 
+    UI_Elements.Pages.Position = UDim2.new(0, 160, 0, 45) 
+    
     UI_Elements.Pages.BackgroundTransparency = 1
     UI_Elements.Pages.Parent = Main
     
@@ -257,6 +265,7 @@ function Library:Window(TitleText)
 end
 
 function Library:Tab(Name)
+    -- Nota: O botão é 0.9 (90%) da largura. Com HorizontalAlignment.Center na lista acima, ele ficará no meio.
     local B = Instance.new("TextButton", UI_Elements.Tabs); B.Size=UDim2.new(0.9,0,0,35); B.BackgroundColor3=Color3.fromRGB(40,40,45); B.Text=Name; B.TextColor3=Color3.fromRGB(150,150,150); B.Font=Enum.Font.GothamBold; B.TextSize=12; Instance.new("UICorner", B).CornerRadius=UDim.new(0,4)
     local P = Instance.new("ScrollingFrame", UI_Elements.Pages); P.Size=UDim2.new(1,0,1,0); P.BackgroundTransparency=1; P.Visible=false; P.ScrollBarThickness=2
     local LL = Instance.new("UIListLayout", P); LL.Padding=UDim.new(0,4); LL.SortOrder = Enum.SortOrder.LayoutOrder
