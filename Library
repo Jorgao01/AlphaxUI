@@ -23,7 +23,22 @@ local UI_Elements = {}
 local ActiveNotifications = {}
 local Connections = {} 
 
-local ParentObj = gethui and gethui() or CoreGui
+-- [ATUALIZAÇÃO] Stream Proof Robusto
+-- Tenta pegar o container seguro (gethui) para esconder do OBS
+local function GetStreamProofParent()
+    local Success, Result = pcall(function()
+        return gethui and gethui() or (get_hidden_gui and get_hidden_gui())
+    end)
+    
+    if Success and Result then
+        return Result
+    end
+    
+    -- Fallback para CoreGui se o executor não suportar stream proof
+    return CoreGui
+end
+
+local ParentObj = GetStreamProofParent()
 
 -- Limpeza inicial
 if ParentObj:FindFirstChild("Alphax_UI_Lib") then 
@@ -40,20 +55,22 @@ local function GetNextOrder(Container)
     return max + 1
 end
 
--- [CORREÇÃO 1] Configuração de Prioridade da Tela
 local function GetScreen()
     if UI_Elements.ScreenGui then return UI_Elements.ScreenGui end
     
-    local Screen = ParentObj:FindFirstChild("Alphax_UI_Lib")
-    if not Screen then
-        Screen = Instance.new("ScreenGui", ParentObj)
-        Screen.Name = "Alphax_UI_Lib"
-        Screen.ResetOnSpawn = false
-        Screen.IgnoreGuiInset = true 
-        Screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-        -- Define uma prioridade altíssima para ficar acima de tudo possível
-        Screen.DisplayOrder = 10000 
+    local Screen = Instance.new("ScreenGui")
+    Screen.Name = "Alphax_UI_Lib"
+    Screen.ResetOnSpawn = false
+    Screen.IgnoreGuiInset = true 
+    Screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    Screen.DisplayOrder = 10000 
+    
+    -- Proteção extra para executores antigos
+    if syn and syn.protect_gui and not gethui then
+        syn.protect_gui(Screen)
     end
+    
+    Screen.Parent = ParentObj
     UI_Elements.ScreenGui = Screen
     return Screen
 end
@@ -75,7 +92,7 @@ function Library:Notify(Text, Duration)
         Holder = Instance.new("Frame", Screen)
         Holder.Name = "NotifyHolder"
         Holder.Size = UDim2.new(0, 300, 1, 0)
-        Holder.Position = UDim2.new(1, -310, 0, 50) -- Ajustado um pouco para baixo
+        Holder.Position = UDim2.new(1, -310, 0, 50)
         Holder.BackgroundTransparency = 1
         UI_Elements.NotifyHolder = Holder
     end
@@ -116,11 +133,7 @@ function Library:Watermark(Name)
     Frame.Name = "Watermark"
     Frame.BackgroundColor3 = LibraryConfig.Theme.Main
     Frame.Size = UDim2.new(0, 0, 0, 25)
-    
-    -- [CORREÇÃO 2] Posição Ajustada (Y = 60)
-    -- Isso move a marca d'água para BAIXO da barra superior do Roblox para garantir visibilidade
     Frame.Position = UDim2.new(0, 20, 0, 60) 
-    
     Frame.AutomaticSize = Enum.AutomaticSize.X
     Frame.ZIndex = 100 
 
@@ -141,7 +154,6 @@ function Library:Watermark(Name)
     local lastUpdate = 0
     local conn = RunService.RenderStepped:Connect(function(deltaTime)
         if not Frame.Parent then return end 
-        
         lastUpdate = lastUpdate + deltaTime
         if lastUpdate >= 0.1 then
             local fps = math.floor(1 / deltaTime)
@@ -149,7 +161,6 @@ function Library:Watermark(Name)
             lastUpdate = 0
         end
     end)
-    
     table.insert(Connections, conn)
 end
 
@@ -212,7 +223,6 @@ function Library:Window(TitleText)
     TabsC.Size = UDim2.new(0, 130, 1, -55)
     TabsC.Position = UDim2.new(0, 15, 0, 45) 
     TabsC.BackgroundColor3 = LibraryConfig.Theme.Container
-    
     Instance.new("UICorner", TabsC).CornerRadius = UDim.new(0, 6)
     
     local TabList = Instance.new("UIListLayout", TabsC)
@@ -305,7 +315,7 @@ end
 function Library:Dropdown(P, T, Opts, Tab, Key, Multi)
     local f = Instance.new("Frame", P); f.Size = UDim2.new(0.95, 0, 0, 35); f.BackgroundColor3 = Color3.fromRGB(40, 40, 45); f.ClipsDescendants = true; Instance.new("UICorner", f).CornerRadius = UDim.new(0, 4)
     local HeaderBtn = Instance.new("TextButton", f); HeaderBtn.Size = UDim2.new(1,0,0,35); HeaderBtn.BackgroundTransparency=1; HeaderBtn.Text=""
-    local l = Instance.new("TextLabel", f); l.Text = T .. ": " .. (Multi and "..." or (Tab[Key] or "")); l.Size = UDim2.new(1, -35, 0, 35); l.Position = UDim2.new(0, 0, 0, 0); l.BackgroundTransparency = 1; l.TextColor3 = LibraryConfig.Theme.Text; l.Font = Enum.Font.Gotham; l.TextSize = 12; l.TextXAlignment = Enum.TextXAlignment.Left
+    local l = Instance.new("TextLabel", f); l.Text = T .. ": " .. (Multi and "..." or (Tab[Key] or "None")); l.Size = UDim2.new(1, -35, 0, 35); l.Position = UDim2.new(0, 0, 0, 0); l.BackgroundTransparency = 1; l.TextColor3 = LibraryConfig.Theme.Text; l.Font = Enum.Font.Gotham; l.TextSize = 12; l.TextXAlignment = Enum.TextXAlignment.Left
     local padLabel = Instance.new("UIPadding", l); padLabel.PaddingLeft = UDim.new(0, 10)
     local lst = Instance.new("ScrollingFrame", f); lst.Size = UDim2.new(1, 0, 0, 150); lst.Position = UDim2.new(0, 0, 0, 35); lst.BackgroundColor3 = Color3.fromRGB(35, 35, 40); lst.ScrollBarThickness = 4; lst.BorderSizePixel = 0
     local pad = Instance.new("UIPadding", lst); pad.PaddingLeft = UDim.new(0, 10); pad.PaddingTop = UDim.new(0, 5)
@@ -337,7 +347,15 @@ function Library:Dropdown(P, T, Opts, Tab, Key, Multi)
         TweenService:Create(f, TweenInfo.new(0.3), {Size = UDim2.new(0.95, 0, 0, f.Size.Y.Offset == 35 and (35 + math.min(contentHeight*30, 150)) or 35)}):Play() 
     end)
     f.LayoutOrder=GetNextOrder(P)
-    return { Refresh = function(self, new_opts) UpdateList(new_opts) end }
+    
+    -- [ATUALIZAÇÃO] Retorno de funções extras para manipulação externa
+    return { 
+        Refresh = function(self, new_opts) UpdateList(new_opts) end,
+        Set = function(self, val) 
+            Tab[Key] = val
+            l.Text = T .. ": " .. (val or "None")
+        end
+    }
 end
 
 function Library:Slider(P, T, Tab, Key, Min, Max)
@@ -413,6 +431,7 @@ end
 
 function Library:PlayerDropdown(P, T, Tab, Key, Call)
     local DropdownController = Library:Dropdown(P, T, {}, Tab, Key, false)
+    
     local function UpdatePlayers()
         local Names = {}
         for _, p in pairs(Players:GetPlayers()) do
@@ -422,8 +441,17 @@ function Library:PlayerDropdown(P, T, Tab, Key, Call)
         end
         DropdownController:Refresh(Names)
     end
+
+    -- [ATUALIZAÇÃO] Detecta saída de jogadores e reseta se for o selecionado
+    local function OnPlayerRemoving(p)
+        if Tab[Key] == p.Name then
+            DropdownController:Set(nil) -- Reseta visual e valor na tabela
+        end
+        UpdatePlayers()
+    end
+
     table.insert(Connections, Players.PlayerAdded:Connect(UpdatePlayers))
-    table.insert(Connections, Players.PlayerRemoving:Connect(UpdatePlayers))
+    table.insert(Connections, Players.PlayerRemoving:Connect(OnPlayerRemoving))
     UpdatePlayers()
 end
 
