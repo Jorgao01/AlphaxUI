@@ -144,7 +144,7 @@ function Library:Window(TitleText)
     
     local TabsC = Instance.new("Frame", Main)
     TabsC.Size = UDim2.new(0, 130, 1, -55)
-    TabsC.Position = UDim2.new(0, 50, 0, 45)
+    TabsC.Position = UDim2.new(0, 0, 0, 45)
     TabsC.BackgroundColor3 = LibraryConfig.Theme.Container
     Instance.new("UICorner", TabsC).CornerRadius = UDim.new(0, 6)
     Instance.new("UIListLayout", TabsC).Padding = UDim.new(0, 5)
