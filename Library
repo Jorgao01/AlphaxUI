@@ -24,7 +24,11 @@ local ActiveNotifications = {}
 local Connections = {} 
 
 local ParentObj = gethui and gethui() or CoreGui
-if ParentObj:FindFirstChild("Alphax_UI_Lib") then ParentObj.Alphax_UI_Lib:Destroy() end
+
+-- Limpeza inicial (apenas se já existir e formos recriar tudo do zero)
+if ParentObj:FindFirstChild("Alphax_UI_Lib") then 
+    ParentObj.Alphax_UI_Lib:Destroy() 
+end
 
 local function GetNextOrder(Container)
     local max = 0
@@ -34,6 +38,22 @@ local function GetNextOrder(Container)
         end
     end
     return max + 1
+end
+
+-- Função interna para garantir que a GUI existe
+local function GetScreen()
+    if UI_Elements.ScreenGui then return UI_Elements.ScreenGui end
+    
+    local Screen = ParentObj:FindFirstChild("Alphax_UI_Lib")
+    if not Screen then
+        Screen = Instance.new("ScreenGui", ParentObj)
+        Screen.Name = "Alphax_UI_Lib"
+        Screen.ResetOnSpawn = false
+        Screen.IgnoreGuiInset = true -- Garante que cubra a tela inteira sem bordas
+        Screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    end
+    UI_Elements.ScreenGui = Screen
+    return Screen
 end
 
 function Library:Unload()
@@ -46,20 +66,36 @@ end
 
 function Library:Notify(Text, Duration)
     local Dur = Duration or 3
+    local Screen = GetScreen()
+    
     local Holder = UI_Elements.NotifyHolder
-    if not Holder then return end
+    if not Holder then
+        Holder = Instance.new("Frame", Screen)
+        Holder.Name = "NotifyHolder"
+        Holder.Size = UDim2.new(0, 300, 1, 0)
+        Holder.Position = UDim2.new(1, -310, 0, 0)
+        Holder.BackgroundTransparency = 1
+        UI_Elements.NotifyHolder = Holder
+    end
+    
     local NotifyFrame = Instance.new("Frame", Holder)
     NotifyFrame.Size = UDim2.new(1, 0, 0, 45); NotifyFrame.Position = UDim2.new(1, 20, 0, 20)
     NotifyFrame.BackgroundColor3 = LibraryConfig.Theme.NotifyBg
     Instance.new("UICorner", NotifyFrame).CornerRadius = UDim.new(0, 6)
     Instance.new("UIStroke", NotifyFrame).Color = LibraryConfig.Theme.Outline
+    
     local Label = Instance.new("TextLabel", NotifyFrame); Label.Size = UDim2.new(1, -20, 1, -5); Label.Position = UDim2.new(0, 10, 0, 0)
     Label.BackgroundTransparency = 1; Label.Text = Text; Label.TextColor3 = LibraryConfig.Theme.Text; Label.Font = Enum.Font.GothamBold; Label.TextSize = 14; Label.TextXAlignment = Enum.TextXAlignment.Left
+    
     local TimerFill = Instance.new("Frame", NotifyFrame); TimerFill.Size = UDim2.new(1, 0, 0, 2); TimerFill.Position = UDim2.new(0, 0, 1, -2); TimerFill.BackgroundColor3 = LibraryConfig.Theme.Accent
+    
     table.insert(ActiveNotifications, 1, NotifyFrame)
+    
     TweenService:Create(NotifyFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back), {Position = UDim2.new(0, 0, 0, 20)}):Play()
     for i = 2, #ActiveNotifications do if ActiveNotifications[i].Parent then TweenService:Create(ActiveNotifications[i], TweenInfo.new(0.3), {Position = UDim2.new(0, 0, 0, 20 + ((i - 1) * 55))}):Play() end end
+    
     TweenService:Create(TimerFill, TweenInfo.new(Dur, Enum.EasingStyle.Linear), {Size = UDim2.new(0, 0, 0, 2)}):Play()
+    
     task.delay(Dur, function()
         if NotifyFrame.Parent then
             TweenService:Create(NotifyFrame, TweenInfo.new(0.3), {Position = UDim2.new(1, 20, 0, NotifyFrame.Position.Y.Offset)}):Play()
@@ -70,20 +106,19 @@ function Library:Notify(Text, Duration)
 end
 
 function Library:Watermark(Name)
-    local Screen = UI_Elements.ScreenGui or ParentObj:FindFirstChild("Alphax_UI_Lib")
-    
-    if not Screen then 
-        warn("[Alphax Lib] AVISO: Use Library:Window() ANTES de Library:Watermark()!")
-        return 
-    end
+    local Screen = GetScreen() -- Usa a função segura para pegar a GUI
+
+    -- Remove watermark antiga se existir para evitar duplicatas
+    if Screen:FindFirstChild("Watermark") then Screen.Watermark:Destroy() end
 
     local Frame = Instance.new("Frame", Screen)
     Frame.Name = "Watermark"
     Frame.BackgroundColor3 = LibraryConfig.Theme.Main
     Frame.Size = UDim2.new(0, 0, 0, 25)
-    Frame.Position = UDim2.new(0.015, 0, 0.015, 0)
+    -- Ajustado para 20px de margem, garantindo que não colida com topbar
+    Frame.Position = UDim2.new(0, 20, 0, 20) 
     Frame.AutomaticSize = Enum.AutomaticSize.X
-    Frame.ZIndex = 10 
+    Frame.ZIndex = 100 -- ZIndex alto para ficar acima de tudo
 
     Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 4)
     Instance.new("UIStroke", Frame).Color = LibraryConfig.Theme.Accent
@@ -115,17 +150,17 @@ function Library:Watermark(Name)
 end
 
 function Library:Window(TitleText)
-    local Screen = Instance.new("ScreenGui", ParentObj)
-    Screen.Name = "Alphax_UI_Lib"
-    Screen.ResetOnSpawn = false
-    UI_Elements.ScreenGui = Screen
+    local Screen = GetScreen() -- Garante a GUI
     
-    local NH = Instance.new("Frame", Screen)
-    NH.Name = "NotifyHolder"
-    NH.Size = UDim2.new(0, 300, 1, 0)
-    NH.Position = UDim2.new(1, -310, 0, 0)
-    NH.BackgroundTransparency = 1
-    UI_Elements.NotifyHolder = NH
+    -- Notificações Holder
+    if not UI_Elements.NotifyHolder then
+        local NH = Instance.new("Frame", Screen)
+        NH.Name = "NotifyHolder"
+        NH.Size = UDim2.new(0, 300, 1, 0)
+        NH.Position = UDim2.new(1, -310, 0, 0)
+        NH.BackgroundTransparency = 1
+        UI_Elements.NotifyHolder = NH
+    end
     
     -- Main Frame (Janela Principal)
     local Main = Instance.new("Frame", Screen)
@@ -133,7 +168,6 @@ function Library:Window(TitleText)
     Main.Position = UDim2.new(0.5, 0, 0.5, 0) 
     Main.Size = UDim2.new(0, 0, 0, 0) 
     Main.ClipsDescendants = true 
-    
     Main.BackgroundColor3 = LibraryConfig.Theme.Main
     Main.Visible = true 
     
@@ -173,58 +207,41 @@ function Library:Window(TitleText)
         Main.Visible = false 
     end)
     
-    -- [CORREÇÃO] Sidebar das Abas (TabsC)
+    -- Sidebar
     local TabsC = Instance.new("Frame", Main)
     TabsC.Size = UDim2.new(0, 130, 1, -55)
-    -- Mudado de 5 para 15 para dar espaço da borda esquerda
     TabsC.Position = UDim2.new(0, 15, 0, 45) 
     TabsC.BackgroundColor3 = LibraryConfig.Theme.Container
     
     Instance.new("UICorner", TabsC).CornerRadius = UDim.new(0, 6)
     
-    -- [CORREÇÃO] Layout das abas
     local TabList = Instance.new("UIListLayout", TabsC)
     TabList.Padding = UDim.new(0, 5)
-    -- Adicionado alinhamento central para que os botões fiquem centralizados na sidebar
     TabList.HorizontalAlignment = Enum.HorizontalAlignment.Center 
     
     Instance.new("UIPadding", TabsC).PaddingTop = UDim.new(0, 10)
     UI_Elements.Tabs = TabsC
     
     UI_Elements.Pages = Instance.new("Frame", Main)
-    -- Ajustado tamanho e posição da área das páginas para compensar a sidebar
     UI_Elements.Pages.Size = UDim2.new(1, -170, 1, -55) 
     UI_Elements.Pages.Position = UDim2.new(0, 160, 0, 45) 
-    
     UI_Elements.Pages.BackgroundTransparency = 1
     UI_Elements.Pages.Parent = Main
     
     -- Drag System
     local drag, startPos, dragStart
-    
     local function UpdateInput(input)
         local delta = input.Position - dragStart
         Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
-    
     Top.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            drag = true
-            dragStart = input.Position
-            startPos = Main.Position
-            
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    drag = false
-                end
-            end)
+            drag = true; dragStart = input.Position; startPos = Main.Position
+            input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then drag = false end end)
         end
     end)
-    
     UserInputService.InputChanged:Connect(function(input)
-        if drag and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            UpdateInput(input)
-        end
+        if drag and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then UpdateInput(input) end
     end)
     
     if UserInputService.TouchEnabled then
@@ -238,34 +255,17 @@ function Library:Window(TitleText)
        MobBtn.Font = Enum.Font.GothamBold
        MobBtn.TextSize = 12
        MobBtn.BackgroundTransparency = 0.2
-       
        Instance.new("UICorner", MobBtn).CornerRadius = UDim.new(0, 8)
        Instance.new("UIStroke", MobBtn).Color = LibraryConfig.Theme.Outline
-       
-       MobBtn.MouseButton1Click:Connect(function() 
-           Main.Visible = not Main.Visible 
-       end)
-       
+       MobBtn.MouseButton1Click:Connect(function() Main.Visible = not Main.Visible end)
        local mDrag, mStart, mPos
-       MobBtn.InputBegan:Connect(function(i) 
-           if i.UserInputType == Enum.UserInputType.Touch then 
-               mDrag = true; mStart = i.Position; mPos = MobBtn.Position 
-           end 
-       end)
-       UserInputService.InputChanged:Connect(function(i) 
-           if mDrag and i.UserInputType == Enum.UserInputType.Touch then 
-               local d = i.Position - mStart
-               MobBtn.Position = UDim2.new(mPos.X.Scale, mPos.X.Offset + d.X, mPos.Y.Scale, mPos.Y.Offset + d.Y)
-           end 
-       end)
-       UserInputService.InputEnded:Connect(function(i) 
-           if i.UserInputType == Enum.UserInputType.Touch then mDrag = false end 
-       end)
+       MobBtn.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.Touch then mDrag = true; mStart = i.Position; mPos = MobBtn.Position end end)
+       UserInputService.InputChanged:Connect(function(i) if mDrag and i.UserInputType == Enum.UserInputType.Touch then local d = i.Position - mStart; MobBtn.Position = UDim2.new(mPos.X.Scale, mPos.X.Offset + d.X, mPos.Y.Scale, mPos.Y.Offset + d.Y) end end)
+       UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.Touch then mDrag = false end end)
     end
 end
 
 function Library:Tab(Name)
-    -- Nota: O botão é 0.9 (90%) da largura. Com HorizontalAlignment.Center na lista acima, ele ficará no meio.
     local B = Instance.new("TextButton", UI_Elements.Tabs); B.Size=UDim2.new(0.9,0,0,35); B.BackgroundColor3=Color3.fromRGB(40,40,45); B.Text=Name; B.TextColor3=Color3.fromRGB(150,150,150); B.Font=Enum.Font.GothamBold; B.TextSize=12; Instance.new("UICorner", B).CornerRadius=UDim.new(0,4)
     local P = Instance.new("ScrollingFrame", UI_Elements.Pages); P.Size=UDim2.new(1,0,1,0); P.BackgroundTransparency=1; P.Visible=false; P.ScrollBarThickness=2
     local LL = Instance.new("UIListLayout", P); LL.Padding=UDim.new(0,4); LL.SortOrder = Enum.SortOrder.LayoutOrder
