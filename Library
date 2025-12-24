@@ -70,13 +70,47 @@ function Library:Notify(Text, Duration)
 end
 
 function Library:Watermark(Name)
-    local Screen = ParentObj:FindFirstChild("Alphax_UI_Lib")
-    if not Screen then return end
-    local Frame = Instance.new("Frame", Screen); Frame.Name = "Watermark"; Frame.BackgroundColor3 = LibraryConfig.Theme.Main; Frame.Size = UDim2.new(0, 0, 0, 25); Frame.Position = UDim2.new(0.015, 0, 0.015, 0); Frame.AutomaticSize = Enum.AutomaticSize.X
-    Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 4); Instance.new("UIStroke", Frame).Color = LibraryConfig.Theme.Accent
-    local Label = Instance.new("TextLabel", Frame); Label.BackgroundTransparency = 1; Label.Size = UDim2.new(0,0,1,0); Label.Position = UDim2.new(0, 10, 0, 0); Label.AutomaticSize = Enum.AutomaticSize.X; Label.Font = Enum.Font.GothamBold; Label.TextSize = 12; Label.TextColor3 = LibraryConfig.Theme.Text
+    local Screen = UI_Elements.ScreenGui or ParentObj:FindFirstChild("Alphax_UI_Lib")
+    
+    if not Screen then 
+        warn("[Alphax Lib] AVISO: Use Library:Window() ANTES de Library:Watermark()!")
+        return 
+    end
+
+    local Frame = Instance.new("Frame", Screen)
+    Frame.Name = "Watermark"
+    Frame.BackgroundColor3 = LibraryConfig.Theme.Main
+    Frame.Size = UDim2.new(0, 0, 0, 25)
+    Frame.Position = UDim2.new(0.015, 0, 0.015, 0)
+    Frame.AutomaticSize = Enum.AutomaticSize.X
+    Frame.ZIndex = 10 -- Garante que fique acima de outros elementos base
+
+    Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 4)
+    Instance.new("UIStroke", Frame).Color = LibraryConfig.Theme.Accent
+    
+    local Label = Instance.new("TextLabel", Frame)
+    Label.BackgroundTransparency = 1
+    Label.Size = UDim2.new(0, 0, 1, 0)
+    Label.Position = UDim2.new(0, 10, 0, 0)
+    Label.AutomaticSize = Enum.AutomaticSize.X
+    Label.Font = Enum.Font.GothamBold
+    Label.TextSize = 12
+    Label.TextColor3 = LibraryConfig.Theme.Text
+    
     Instance.new("UIPadding", Frame).PaddingRight = UDim.new(0, 10)
-    local conn = RunService.RenderStepped:Connect(function() if Frame.Parent then local fps = math.floor(1 / RunService.RenderStepped:Wait()); Label.Text = string.format("%s  |  FPS: %d", Name, fps) end end)
+    
+    local lastUpdate = 0
+    local conn = RunService.RenderStepped:Connect(function(deltaTime)
+        if not Frame.Parent then return end -- Para se o frame for deletado
+        
+        lastUpdate = lastUpdate + deltaTime
+        if lastUpdate >= 0.1 then
+            local fps = math.floor(1 / deltaTime)
+            Label.Text = string.format("%s  |  FPS: %d", Name, fps)
+            lastUpdate = 0
+        end
+    end)
+    
     table.insert(Connections, conn)
 end
 
