@@ -25,7 +25,7 @@ local Connections = {}
 
 local ParentObj = gethui and gethui() or CoreGui
 
--- Limpeza inicial (apenas se já existir e formos recriar tudo do zero)
+-- Limpeza inicial
 if ParentObj:FindFirstChild("Alphax_UI_Lib") then 
     ParentObj.Alphax_UI_Lib:Destroy() 
 end
@@ -40,7 +40,7 @@ local function GetNextOrder(Container)
     return max + 1
 end
 
--- Função interna para garantir que a GUI existe
+-- [CORREÇÃO 1] Configuração de Prioridade da Tela
 local function GetScreen()
     if UI_Elements.ScreenGui then return UI_Elements.ScreenGui end
     
@@ -49,8 +49,10 @@ local function GetScreen()
         Screen = Instance.new("ScreenGui", ParentObj)
         Screen.Name = "Alphax_UI_Lib"
         Screen.ResetOnSpawn = false
-        Screen.IgnoreGuiInset = true -- Garante que cubra a tela inteira sem bordas
+        Screen.IgnoreGuiInset = true 
         Screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        -- Define uma prioridade altíssima para ficar acima de tudo possível
+        Screen.DisplayOrder = 10000 
     end
     UI_Elements.ScreenGui = Screen
     return Screen
@@ -73,7 +75,7 @@ function Library:Notify(Text, Duration)
         Holder = Instance.new("Frame", Screen)
         Holder.Name = "NotifyHolder"
         Holder.Size = UDim2.new(0, 300, 1, 0)
-        Holder.Position = UDim2.new(1, -310, 0, 0)
+        Holder.Position = UDim2.new(1, -310, 0, 50) -- Ajustado um pouco para baixo
         Holder.BackgroundTransparency = 1
         UI_Elements.NotifyHolder = Holder
     end
@@ -106,19 +108,21 @@ function Library:Notify(Text, Duration)
 end
 
 function Library:Watermark(Name)
-    local Screen = GetScreen() -- Usa a função segura para pegar a GUI
+    local Screen = GetScreen() 
 
-    -- Remove watermark antiga se existir para evitar duplicatas
     if Screen:FindFirstChild("Watermark") then Screen.Watermark:Destroy() end
 
     local Frame = Instance.new("Frame", Screen)
     Frame.Name = "Watermark"
     Frame.BackgroundColor3 = LibraryConfig.Theme.Main
     Frame.Size = UDim2.new(0, 0, 0, 25)
-    -- Ajustado para 20px de margem, garantindo que não colida com topbar
-    Frame.Position = UDim2.new(0, 20, 0, 20) 
+    
+    -- [CORREÇÃO 2] Posição Ajustada (Y = 60)
+    -- Isso move a marca d'água para BAIXO da barra superior do Roblox para garantir visibilidade
+    Frame.Position = UDim2.new(0, 20, 0, 60) 
+    
     Frame.AutomaticSize = Enum.AutomaticSize.X
-    Frame.ZIndex = 100 -- ZIndex alto para ficar acima de tudo
+    Frame.ZIndex = 100 
 
     Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 4)
     Instance.new("UIStroke", Frame).Color = LibraryConfig.Theme.Accent
@@ -150,19 +154,17 @@ function Library:Watermark(Name)
 end
 
 function Library:Window(TitleText)
-    local Screen = GetScreen() -- Garante a GUI
+    local Screen = GetScreen() 
     
-    -- Notificações Holder
     if not UI_Elements.NotifyHolder then
         local NH = Instance.new("Frame", Screen)
         NH.Name = "NotifyHolder"
         NH.Size = UDim2.new(0, 300, 1, 0)
-        NH.Position = UDim2.new(1, -310, 0, 0)
+        NH.Position = UDim2.new(1, -310, 0, 50)
         NH.BackgroundTransparency = 1
         UI_Elements.NotifyHolder = NH
     end
     
-    -- Main Frame (Janela Principal)
     local Main = Instance.new("Frame", Screen)
     Main.AnchorPoint = Vector2.new(0.5, 0.5) 
     Main.Position = UDim2.new(0.5, 0, 0.5, 0) 
@@ -178,7 +180,6 @@ function Library:Window(TitleText)
     local TargetSize = UDim2.new(0, 550, 0, 500)
     TweenService:Create(Main, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = TargetSize}):Play()
     
-    -- Top Bar
     local Top = Instance.new("Frame", Main)
     Top.Size = UDim2.new(1, 0, 0, 45)
     Top.BackgroundTransparency = 1
@@ -207,7 +208,6 @@ function Library:Window(TitleText)
         Main.Visible = false 
     end)
     
-    -- Sidebar
     local TabsC = Instance.new("Frame", Main)
     TabsC.Size = UDim2.new(0, 130, 1, -55)
     TabsC.Position = UDim2.new(0, 15, 0, 45) 
@@ -228,7 +228,6 @@ function Library:Window(TitleText)
     UI_Elements.Pages.BackgroundTransparency = 1
     UI_Elements.Pages.Parent = Main
     
-    -- Drag System
     local drag, startPos, dragStart
     local function UpdateInput(input)
         local delta = input.Position - dragStart
