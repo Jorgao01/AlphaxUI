@@ -263,7 +263,7 @@ function Library:KeySystem(Settings)
     repeat task.wait() until Verified
 end
 
--- [JANELA PRINCIPAL]
+-- [JANELA PRINCIPAL ATUALIZADA COM SCROLL NAS ABAS]
 function Library:Window(TitleText)
     local Screen = GetScreen() 
     
@@ -319,11 +319,20 @@ function Library:Window(TitleText)
     local SidebarPadding = 15
     local UserProfileHeight = 60
 
-    local TabsC = Instance.new("Frame", Main)
+    -- [[ ALTERAÇÃO AQUI: Mudado de Frame para ScrollingFrame ]] --
+    local TabsC = Instance.new("ScrollingFrame", Main) 
     TabsC.Name = "TabsContainer"
     TabsC.Size = UDim2.new(0, SidebarWidth, 1, -(55 + UserProfileHeight)) 
     TabsC.Position = UDim2.new(0, SidebarPadding, 0, 45) 
     TabsC.BackgroundColor3 = LibraryConfig.Theme.Container
+    
+    -- Configurações da Barra de Rolagem
+    TabsC.ScrollBarThickness = 2 -- Espessura fina para ficar bonito
+    TabsC.ScrollBarImageColor3 = LibraryConfig.Theme.Accent -- Cor da barra igual ao tema
+    TabsC.AutomaticCanvasSize = Enum.AutomaticSize.Y -- Calcula altura auto
+    TabsC.CanvasSize = UDim2.new(0,0,0,0) -- Zera para o auto funcionar
+    TabsC.BorderSizePixel = 0
+    
     Instance.new("UICorner", TabsC).CornerRadius = UDim.new(0, 6)
     
     local TabList = Instance.new("UIListLayout", TabsC)
