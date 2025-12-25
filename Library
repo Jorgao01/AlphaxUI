@@ -27,7 +27,7 @@ local UI_Elements = {}
 local ActiveNotifications = {}
 local Connections = {} 
 
--- [FUNÇÃO EXTRA] Cortar texto se for muito grande
+-- [FUNÇÃO EXTRA] Cortar texto
 local function TruncateText(text, limit)
     if not text then return "" end
     if #text > limit then
@@ -311,7 +311,7 @@ function Library:Section(P, Text)
     l.LayoutOrder = GetNextOrder(P)
 end
 
--- [TOGGLE COM BIND CORRIGIDA (AGUARDA O CLIQUE)]
+-- [TOGGLE]
 function Library:Toggle(P, T, Tab, Key, Call)
     local b = Instance.new("TextButton", P)
     b.Size = UDim2.new(0.98, 0, 0, 35)
@@ -360,7 +360,6 @@ function Library:Toggle(P, T, Tab, Key, Call)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             ToggleAction()
         elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
-            -- [CORREÇÃO] Wait para não registrar o próprio clique direito como bind instantaneamente
             BindLabel.Text = "..."
             BindLabel.TextColor3 = LibraryConfig.Theme.BindWait
             task.wait(0.2) 
@@ -469,13 +468,71 @@ function Library:Slider(P, T, Tab, Key, Min, Max)
     f.LayoutOrder = GetNextOrder(P)
 end
 
+-- [FUNÇÃO KEYBIND RE-ADICIONADA]
+function Library:Keybind(P, T, Tab, Key, Call)
+    local b = Instance.new("TextButton", P)
+    b.Size = UDim2.new(0.98, 0, 0, 35)
+    b.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+    b.Text = ""
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 4)
+    
+    local l = Instance.new("TextLabel", b)
+    l.Text = T
+    l.Size = UDim2.new(0.6, 0, 1, 0)
+    l.Position = UDim2.new(0, 10, 0, 0)
+    l.BackgroundTransparency = 1
+    l.TextColor3 = LibraryConfig.Theme.Text
+    l.Font = Enum.Font.Gotham
+    l.TextSize = 12
+    l.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local k = Instance.new("TextLabel", b)
+    k.Size = UDim2.new(0.3, 0, 1, 0)
+    k.Position = UDim2.new(0.65, 0, 0, 0)
+    k.BackgroundTransparency = 1
+    k.Font = Enum.Font.GothamBold
+    k.TextSize = 12
+    k.TextXAlignment = Enum.TextXAlignment.Right
+    
+    local function UpdateText()
+        local val = Tab[Key]
+        if val == nil or val == Enum.KeyCode.Unknown then
+            k.Text = "[ None ]" 
+            k.TextColor3 = LibraryConfig.Theme.SubText
+        else
+            k.Text = "[" .. val.Name .. "]"
+            k.TextColor3 = LibraryConfig.Theme.Accent
+        end
+    end
+    UpdateText() 
+
+    b.MouseButton1Click:Connect(function() 
+        k.Text = "..."
+        k.TextColor3 = LibraryConfig.Theme.BindWait
+        local inputConn
+        inputConn = UserInputService.InputBegan:Connect(function(i)
+            if i.UserInputType == Enum.UserInputType.Keyboard then
+                if i.KeyCode == Enum.KeyCode.Backspace or i.KeyCode == Enum.KeyCode.Delete then
+                    Tab[Key] = nil
+                    if Call then Call(nil) end
+                else
+                    Tab[Key] = i.KeyCode
+                    if Call then Call(i.KeyCode) end
+                end
+                UpdateText()
+                inputConn:Disconnect()
+            end
+        end)
+    end)
+    b.LayoutOrder = GetNextOrder(P)
+end
+
 -- [DROPDOWN BLINDADO]
 function Library:Dropdown(P, T, Opts, Tab, Key)
     local f = Instance.new("Frame", P); f.Size = UDim2.new(0.98, 0, 0, 35); f.BackgroundColor3 = Color3.fromRGB(40, 40, 45); f.ClipsDescendants = true; Instance.new("UICorner", f).CornerRadius = UDim.new(0, 4)
     local HeaderBtn = Instance.new("TextButton", f); HeaderBtn.Size = UDim2.new(1,0,0,35); HeaderBtn.BackgroundTransparency=1; HeaderBtn.Text=""
     local l = Instance.new("TextLabel", f)
     
-    -- [CORREÇÃO CRÍTICA] Usando string.format para evitar o erro "concatenate string with table"
     l.Text = string.format("%s: %s", tostring(T), tostring(Tab[Key] or "None"))
     
     l.Size = UDim2.new(1, -35, 0, 35); l.Position = UDim2.new(0, 10, 0, 0); l.BackgroundTransparency = 1; l.TextColor3 = LibraryConfig.Theme.Text; l.Font = Enum.Font.Gotham; l.TextSize = 12; l.TextXAlignment = Enum.TextXAlignment.Left
@@ -491,7 +548,6 @@ function Library:Dropdown(P, T, Opts, Tab, Key)
             local ob = Instance.new("TextButton", lst); ob.Size = UDim2.new(1, 0, 0, 30); ob.BackgroundColor3 = Color3.fromRGB(35, 35, 40); ob.Text = o; ob.TextColor3 = Color3.fromRGB(200, 200, 200); ob.Font = Enum.Font.Gotham; ob.TextSize = 12; ob.BorderSizePixel = 0
             ob.MouseButton1Click:Connect(function() 
                 Tab[Key] = o
-                -- [CORREÇÃO AQUI TAMBÉM]
                 l.Text = string.format("%s: %s", tostring(T), tostring(o))
                 TweenService:Create(f, TweenInfo.new(0.3), {Size = UDim2.new(0.98, 0, 0, 35)}):Play() 
             end)
