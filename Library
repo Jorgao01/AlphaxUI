@@ -164,8 +164,6 @@ function Library:Watermark(Name)
     table.insert(Connections, conn)
 end
 
--- Adicione isso logo após a função Library:Notify ou antes de Library:Window
-
 function Library:KeySystem(Settings)
     if not Settings or not Settings.Enabled then return end
 
@@ -182,6 +180,40 @@ function Library:KeySystem(Settings)
     
     Instance.new("UICorner", KeyFrame).CornerRadius = UDim.new(0, 8)
     Instance.new("UIStroke", KeyFrame).Color = LibraryConfig.Theme.Outline
+
+    -- [[ LÓGICA DE ARRASTAR (DRAGGABLE) ADICIONADA ]] --
+    local dragging, dragInput, dragStart, startPos
+    
+    local function update(input)
+        local delta = input.Position - dragStart
+        KeyFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+    
+    KeyFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = KeyFrame.Position
+            
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    
+    KeyFrame.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            update(input)
+        end
+    end)
 
     TweenService:Create(KeyFrame, TweenInfo.new(0.6, Enum.EasingStyle.Back), {Size = UDim2.new(0, 400, 0, 250)}):Play()
     
@@ -275,7 +307,6 @@ function Library:KeySystem(Settings)
         else
             Library:Notify("Invalid Key!", 2)
             InputBox.Text = ""
-            -- Efeito de erro (tremida leve ou flash vermelho)
             local Stroke = InputBg:FindFirstChild("UIStroke")
             if Stroke then 
                 local OldColor = Stroke.Color
@@ -289,7 +320,6 @@ function Library:KeySystem(Settings)
 
     repeat task.wait() until Verified
 end
-
 function Library:Window(TitleText)
     local Screen = GetScreen() 
     
