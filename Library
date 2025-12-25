@@ -5,27 +5,30 @@ local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
-local LibraryConfig = {
-    MenuOpen = true,
-    MenuKey = Enum.KeyCode.RightControl,
-    Theme = {
-        Main = Color3.fromRGB(20, 20, 25),
-        Container = Color3.fromRGB(30, 30, 35),
-        Accent = Color3.fromRGB(0, 255, 120),
-        Text = Color3.fromRGB(240, 240, 240),
-        SubText = Color3.fromRGB(150, 150, 150),
-        Outline = Color3.fromRGB(50, 50, 55),
-        NotifyBg = Color3.fromRGB(25, 25, 30),
-        BindWait = Color3.fromRGB(255, 50, 50)
+local Library = {
+    Binds = {},
+    Config = { -- Configuração agora fica DENTRO da Library para acesso imediato
+        MenuOpen = true,
+        MenuKey = Enum.KeyCode.RightControl,
+        Theme = {
+            Main = Color3.fromRGB(20, 20, 25),
+            Container = Color3.fromRGB(30, 30, 35),
+            Accent = Color3.fromRGB(0, 255, 120),
+            Text = Color3.fromRGB(240, 240, 240),
+            SubText = Color3.fromRGB(150, 150, 150),
+            Outline = Color3.fromRGB(50, 50, 55),
+            NotifyBg = Color3.fromRGB(25, 25, 30),
+            BindWait = Color3.fromRGB(255, 50, 50)
+        }
     }
 }
 
-local Library = {
-    Binds = {}
-}
 local UI_Elements = {}
 local ActiveNotifications = {}
 local Connections = {} 
+
+-- Atalho para o tema (para não quebrar o código antigo)
+local LibraryConfig = Library.Config 
 
 -- [FUNÇÃO EXTRA] Cortar texto
 local function TruncateText(text, limit)
@@ -311,8 +314,10 @@ function Library:Section(P, Text)
     l.LayoutOrder = GetNextOrder(P)
 end
 
--- [TOGGLE]
+-- [TOGGLE BLINDADA]
 function Library:Toggle(P, T, Tab, Key, Call)
+    Tab = Tab or {} -- PROTEÇÃO: Se a tabela for nil, cria uma vazia para não crashar
+    
     local b = Instance.new("TextButton", P)
     b.Size = UDim2.new(0.98, 0, 0, 35)
     b.BackgroundColor3 = Color3.fromRGB(40,40,45)
@@ -421,7 +426,10 @@ function Library:Button(P, T, C)
     b.LayoutOrder = GetNextOrder(P)
 end
 
+-- [SLIDER BLINDADO]
 function Library:Slider(P, T, Tab, Key, Min, Max)
+    Tab = Tab or {} -- PROTEÇÃO
+    
     local f = Instance.new("Frame", P)
     f.Size = UDim2.new(0.98, 0, 0, 45)
     f.BackgroundColor3 = Color3.fromRGB(40,40,45)
@@ -448,7 +456,7 @@ function Library:Slider(P, T, Tab, Key, Min, Max)
     Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
     
     local function Up() 
-        local v = Tab[Key]
+        local v = Tab[Key] or Min -- Proteção se o valor for nil
         local p = (v - Min) / (Max - Min)
         fill.Size = UDim2.new(p, 0, 1, 0)
         l.Text = T .. ": " .. v 
@@ -468,7 +476,10 @@ function Library:Slider(P, T, Tab, Key, Min, Max)
     f.LayoutOrder = GetNextOrder(P)
 end
 
+-- [KEYBIND BLINDADA (AQUELA QUE DAVA ERRO)]
 function Library:Keybind(P, T, Tab, Key, Call)
+    Tab = Tab or {} -- PROTEÇÃO CRÍTICA AQUI
+    
     local b = Instance.new("TextButton", P)
     b.Size = UDim2.new(0.98, 0, 0, 35)
     b.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
@@ -494,6 +505,7 @@ function Library:Keybind(P, T, Tab, Key, Call)
     k.TextXAlignment = Enum.TextXAlignment.Right
     
     local function UpdateText()
+        -- Se Tab for nil (o que não deve acontecer por causa da proteção), ele não quebra
         local val = Tab[Key]
         if val == nil or val == Enum.KeyCode.Unknown then
             k.Text = "[ None ]" 
@@ -526,7 +538,10 @@ function Library:Keybind(P, T, Tab, Key, Call)
     b.LayoutOrder = GetNextOrder(P)
 end
 
+-- [DROPDOWN BLINDADO]
 function Library:Dropdown(P, T, Opts, Tab, Key)
+    Tab = Tab or {} -- PROTEÇÃO
+    
     local f = Instance.new("Frame", P); f.Size = UDim2.new(0.98, 0, 0, 35); f.BackgroundColor3 = Color3.fromRGB(40, 40, 45); f.ClipsDescendants = true; Instance.new("UICorner", f).CornerRadius = UDim.new(0, 4)
     local HeaderBtn = Instance.new("TextButton", f); HeaderBtn.Size = UDim2.new(1,0,0,35); HeaderBtn.BackgroundTransparency=1; HeaderBtn.Text=""
     local l = Instance.new("TextLabel", f)
@@ -597,8 +612,5 @@ table.insert(Connections, UserInputService.InputBegan:Connect(function(input, pr
         UI_Elements.MainFrame.Visible = not UI_Elements.MainFrame.Visible 
     end
 end))
-
--- [FIX FINAL] Expondo a config para o script principal
-Library.Config = LibraryConfig
 
 return Library
