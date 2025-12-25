@@ -29,6 +29,7 @@ local Connections = {}
 
 -- [FUNÇÃO EXTRA] Cortar texto se for muito grande
 local function TruncateText(text, limit)
+    if not text then return "" end
     if #text > limit then
         return string.sub(text, 1, limit) .. "..."
     end
@@ -195,7 +196,7 @@ function Library:Window(TitleText)
     Instance.new("UIPadding", TabsC).PaddingTop = UDim.new(0, 10)
     UI_Elements.Tabs = TabsC
     
-    -- [[ USER PROFILE CORRIGIDO (COM LIMITE DE LETRAS) ]] --
+    -- [[ USER PROFILE (COM PROTEÇÃO E LIMITE) ]] --
     local ProfileFrame = Instance.new("Frame", Main)
     ProfileFrame.Name = "UserProfile"
     ProfileFrame.Size = UDim2.new(0, SidebarWidth, 0, 50)
@@ -213,7 +214,6 @@ function Library:Window(TitleText)
     Instance.new("UIStroke", AvatarImg).Color = LibraryConfig.Theme.Accent
     
     local DispLabel = Instance.new("TextLabel", ProfileFrame)
-    -- Aplica o corte (13 caracteres max)
     DispLabel.Text = TruncateText(LocalPlayer.DisplayName, 13) 
     DispLabel.Size = UDim2.new(1, -55, 0, 20)
     DispLabel.Position = UDim2.new(0, 50, 0, 6)
@@ -224,7 +224,6 @@ function Library:Window(TitleText)
     DispLabel.TextXAlignment = Enum.TextXAlignment.Left
     
     local UserLabel = Instance.new("TextLabel", ProfileFrame)
-    -- Aplica o corte (16 caracteres max)
     UserLabel.Text = "@" .. TruncateText(LocalPlayer.Name, 16)
     UserLabel.Size = UDim2.new(1, -55, 0, 15)
     UserLabel.Position = UDim2.new(0, 50, 0, 24)
@@ -467,11 +466,16 @@ function Library:Slider(P, T, Tab, Key, Min, Max)
     f.LayoutOrder = GetNextOrder(P)
 end
 
--- [DROPDOWN ATUALIZADO]
+-- [DROPDOWN CORRIGIDO - COM PROTEÇÃO ANTI-CRASH]
 function Library:Dropdown(P, T, Opts, Tab, Key)
     local f = Instance.new("Frame", P); f.Size = UDim2.new(0.98, 0, 0, 35); f.BackgroundColor3 = Color3.fromRGB(40, 40, 45); f.ClipsDescendants = true; Instance.new("UICorner", f).CornerRadius = UDim.new(0, 4)
     local HeaderBtn = Instance.new("TextButton", f); HeaderBtn.Size = UDim2.new(1,0,0,35); HeaderBtn.BackgroundTransparency=1; HeaderBtn.Text=""
-    local l = Instance.new("TextLabel", f); l.Text = T .. ": " .. (Tab[Key] or "None"); l.Size = UDim2.new(1, -35, 0, 35); l.Position = UDim2.new(0, 10, 0, 0); l.BackgroundTransparency = 1; l.TextColor3 = LibraryConfig.Theme.Text; l.Font = Enum.Font.Gotham; l.TextSize = 12; l.TextXAlignment = Enum.TextXAlignment.Left
+    local l = Instance.new("TextLabel", f)
+    
+    -- [CORREÇÃO AQUI] Usamos tostring() para garantir que não tente somar tabela com texto
+    l.Text = tostring(T) .. ": " .. tostring(Tab[Key] or "None")
+    
+    l.Size = UDim2.new(1, -35, 0, 35); l.Position = UDim2.new(0, 10, 0, 0); l.BackgroundTransparency = 1; l.TextColor3 = LibraryConfig.Theme.Text; l.Font = Enum.Font.Gotham; l.TextSize = 12; l.TextXAlignment = Enum.TextXAlignment.Left
     
     local lst = Instance.new("ScrollingFrame", f); lst.Size = UDim2.new(1, 0, 0, 150); lst.Position = UDim2.new(0, 0, 0, 35); lst.BackgroundColor3 = Color3.fromRGB(35, 35, 40); lst.ScrollBarThickness = 4; lst.BorderSizePixel = 0
     Instance.new("UIListLayout", lst).SortOrder = Enum.SortOrder.LayoutOrder
@@ -483,7 +487,10 @@ function Library:Dropdown(P, T, Opts, Tab, Key)
         for _, o in pairs(Opts) do
             local ob = Instance.new("TextButton", lst); ob.Size = UDim2.new(1, 0, 0, 30); ob.BackgroundColor3 = Color3.fromRGB(35, 35, 40); ob.Text = o; ob.TextColor3 = Color3.fromRGB(200, 200, 200); ob.Font = Enum.Font.Gotham; ob.TextSize = 12; ob.BorderSizePixel = 0
             ob.MouseButton1Click:Connect(function() 
-                Tab[Key] = o; l.Text = T .. ": " .. o; TweenService:Create(f, TweenInfo.new(0.3), {Size = UDim2.new(0.98, 0, 0, 35)}):Play() 
+                Tab[Key] = o
+                -- [CORREÇÃO AQUI TAMBÉM]
+                l.Text = tostring(T) .. ": " .. tostring(o)
+                TweenService:Create(f, TweenInfo.new(0.3), {Size = UDim2.new(0.98, 0, 0, 35)}):Play() 
             end)
         end
     end
@@ -496,11 +503,13 @@ function Library:Dropdown(P, T, Opts, Tab, Key)
     
     return {
         Refresh = function(self, list) UpdateList(list) end,
-        Set = function(self, val) Tab[Key] = val; l.Text = T .. ": " .. (val or "None") end
+        Set = function(self, val) 
+            Tab[Key] = val
+            l.Text = tostring(T) .. ": " .. tostring(val or "None") 
+        end
     }
 end
 
--- [FUNÇÃO RESTAURADA E CORRIGIDA] Player Dropdown
 function Library:PlayerDropdown(P, T, Tab, Key)
     local DropdownController = Library:Dropdown(P, T, {}, Tab, Key)
     
