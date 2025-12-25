@@ -732,7 +732,7 @@ function Library:PlayerDropdown(P, T, Tab, Key)
         local Names = {}
         for _, p in pairs(Players:GetPlayers()) do
             if p ~= Players.LocalPlayer then
-                table.insert(Names, p.Name)
+                table.insert(Names, p.Name .. " | " .. p.DisplayName)
             end
         end
         DropdownController:Refresh(Names)
@@ -740,7 +740,8 @@ function Library:PlayerDropdown(P, T, Tab, Key)
     
     table.insert(Connections, Players.PlayerAdded:Connect(UpdatePlayers))
     table.insert(Connections, Players.PlayerRemoving:Connect(function(p)
-        if Tab[Key] == p.Name then
+        local FormattedName = p.Name .. " | " .. p.DisplayName
+        if Tab[Key] == FormattedName then
             DropdownController:Set(nil)
         end
         UpdatePlayers()
