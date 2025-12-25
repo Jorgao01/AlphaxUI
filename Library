@@ -21,11 +21,19 @@ local LibraryConfig = {
 }
 
 local Library = {
-    Binds = {} -- Tabela para armazenar as binds ativas
+    Binds = {}
 }
 local UI_Elements = {}
 local ActiveNotifications = {}
 local Connections = {} 
+
+-- [FUNÇÃO EXTRA] Cortar texto se for muito grande
+local function TruncateText(text, limit)
+    if #text > limit then
+        return string.sub(text, 1, limit) .. "..."
+    end
+    return text
+end
 
 -- [SISTEMA] Stream Proof
 local function GetStreamProofParent()
@@ -120,7 +128,6 @@ end
 function Library:Window(TitleText)
     local Screen = GetScreen() 
     
-    -- Holder de Notificações
     if not UI_Elements.NotifyHolder then
         local NH = Instance.new("Frame", Screen); NH.Name = "NotifyHolder"; NH.Size = UDim2.new(0, 300, 1, 0); NH.Position = UDim2.new(1, -310, 0, 50); NH.BackgroundTransparency = 1; UI_Elements.NotifyHolder = NH
     end
@@ -138,11 +145,9 @@ function Library:Window(TitleText)
     Instance.new("UIStroke", Main).Color = LibraryConfig.Theme.Outline
     UI_Elements.MainFrame = Main 
 
-    -- Animação de Abertura
-    local TargetSize = UDim2.new(0, 580, 0, 500) -- Aumentei levemente a largura
+    local TargetSize = UDim2.new(0, 580, 0, 500)
     TweenService:Create(Main, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = TargetSize}):Play()
     
-    -- Top Bar
     local Top = Instance.new("Frame", Main)
     Top.Size = UDim2.new(1, 0, 0, 45)
     Top.BackgroundTransparency = 1
@@ -171,14 +176,12 @@ function Library:Window(TitleText)
         Library:Unload()
     end)
     
-    -- Container das Abas (Sidebar)
     local SidebarWidth = 140
     local SidebarPadding = 15
     local UserProfileHeight = 60
 
     local TabsC = Instance.new("Frame", Main)
     TabsC.Name = "TabsContainer"
-    -- Altura ajustada para deixar espaço para o Perfil
     TabsC.Size = UDim2.new(0, SidebarWidth, 1, -(55 + UserProfileHeight)) 
     TabsC.Position = UDim2.new(0, SidebarPadding, 0, 45) 
     TabsC.BackgroundColor3 = LibraryConfig.Theme.Container
@@ -192,27 +195,26 @@ function Library:Window(TitleText)
     Instance.new("UIPadding", TabsC).PaddingTop = UDim.new(0, 10)
     UI_Elements.Tabs = TabsC
     
-    -- [[ NOVO: USER PROFILE NO CANTO INFERIOR ESQUERDO ]] --
+    -- [[ USER PROFILE CORRIGIDO (COM LIMITE DE LETRAS) ]] --
     local ProfileFrame = Instance.new("Frame", Main)
     ProfileFrame.Name = "UserProfile"
     ProfileFrame.Size = UDim2.new(0, SidebarWidth, 0, 50)
-    ProfileFrame.Position = UDim2.new(0, SidebarPadding, 1, -65) -- Fica abaixo das tabs
+    ProfileFrame.Position = UDim2.new(0, SidebarPadding, 1, -65) 
     ProfileFrame.BackgroundColor3 = LibraryConfig.Theme.Container
     Instance.new("UICorner", ProfileFrame).CornerRadius = UDim.new(0, 6)
     Instance.new("UIStroke", ProfileFrame).Color = LibraryConfig.Theme.Outline
     
-    -- Avatar Image
     local AvatarImg = Instance.new("ImageLabel", ProfileFrame)
     AvatarImg.Size = UDim2.new(0, 36, 0, 36)
     AvatarImg.Position = UDim2.new(0, 8, 0.5, -18)
     AvatarImg.BackgroundColor3 = LibraryConfig.Theme.Main
     AvatarImg.Image = Players:GetUserThumbnailAsync(LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size48x48)
-    Instance.new("UICorner", AvatarImg).CornerRadius = UDim.new(1, 0) -- Círculo
+    Instance.new("UICorner", AvatarImg).CornerRadius = UDim.new(1, 0)
     Instance.new("UIStroke", AvatarImg).Color = LibraryConfig.Theme.Accent
     
-    -- Display Name
     local DispLabel = Instance.new("TextLabel", ProfileFrame)
-    DispLabel.Text = LocalPlayer.DisplayName
+    -- Aplica o corte (13 caracteres max)
+    DispLabel.Text = TruncateText(LocalPlayer.DisplayName, 13) 
     DispLabel.Size = UDim2.new(1, -55, 0, 20)
     DispLabel.Position = UDim2.new(0, 50, 0, 6)
     DispLabel.BackgroundTransparency = 1
@@ -221,9 +223,9 @@ function Library:Window(TitleText)
     DispLabel.TextSize = 13
     DispLabel.TextXAlignment = Enum.TextXAlignment.Left
     
-    -- Username (@...)
     local UserLabel = Instance.new("TextLabel", ProfileFrame)
-    UserLabel.Text = "@" .. LocalPlayer.Name
+    -- Aplica o corte (16 caracteres max)
+    UserLabel.Text = "@" .. TruncateText(LocalPlayer.Name, 16)
     UserLabel.Size = UDim2.new(1, -55, 0, 15)
     UserLabel.Position = UDim2.new(0, 50, 0, 24)
     UserLabel.BackgroundTransparency = 1
@@ -232,14 +234,12 @@ function Library:Window(TitleText)
     UserLabel.TextSize = 11
     UserLabel.TextXAlignment = Enum.TextXAlignment.Left
 
-    -- Container das Páginas (Conteúdo)
     UI_Elements.Pages = Instance.new("Frame", Main)
     UI_Elements.Pages.Size = UDim2.new(1, -(SidebarWidth + 40), 1, -55) 
     UI_Elements.Pages.Position = UDim2.new(0, SidebarWidth + 30, 0, 45) 
     UI_Elements.Pages.BackgroundTransparency = 1
     UI_Elements.Pages.Parent = Main
     
-    -- Lógica de Arrastar Janela
     local drag, startPos, dragStart
     local function UpdateInput(input)
         local delta = input.Position - dragStart
@@ -290,8 +290,7 @@ function Library:Tab(Name)
         B.BackgroundColor3 = Color3.fromRGB(50,50,55) 
     end)
     
-    -- Seleciona a primeira aba automaticamente
-    if #UI_Elements.Tabs:GetChildren() == 2 then -- 1 é UIPadding/List, 2 é o primeiro botão
+    if #UI_Elements.Tabs:GetChildren() == 2 then 
          P.Visible = true
          B.TextColor3 = LibraryConfig.Theme.Accent
          B.BackgroundColor3 = Color3.fromRGB(50,50,55)
@@ -313,7 +312,6 @@ function Library:Section(P, Text)
     l.LayoutOrder = GetNextOrder(P)
 end
 
--- [TOGGLE COM BIND NO CLIQUE DIREITO]
 function Library:Toggle(P, T, Tab, Key, Call)
     local b = Instance.new("TextButton", P)
     b.Size = UDim2.new(0.98, 0, 0, 35)
@@ -332,7 +330,7 @@ function Library:Toggle(P, T, Tab, Key, Call)
     l.TextXAlignment = Enum.TextXAlignment.Left
     Instance.new("UIPadding", l).PaddingLeft = UDim.new(0, 10)
     
-    local BindLabel = Instance.new("TextLabel", b) -- Mostra a tecla bindada
+    local BindLabel = Instance.new("TextLabel", b) 
     BindLabel.Size = UDim2.new(0, 30, 1, 0)
     BindLabel.Position = UDim2.new(1, -60, 0, 0)
     BindLabel.BackgroundTransparency = 1
@@ -352,7 +350,6 @@ function Library:Toggle(P, T, Tab, Key, Call)
     end
     UpdateState()
     
-    -- Função principal do clique (Esquerdo)
     local function ToggleAction()
         Tab[Key] = not Tab[Key]
         UpdateState()
@@ -360,11 +357,8 @@ function Library:Toggle(P, T, Tab, Key, Call)
     end
     
     b.InputBegan:Connect(function(input)
-        -- Clique Esquerdo: Ativa/Desativa
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             ToggleAction()
-            
-        -- Clique Direito: Define Keybind
         elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
             BindLabel.Text = "..."
             BindLabel.TextColor3 = LibraryConfig.Theme.BindWait
@@ -373,12 +367,10 @@ function Library:Toggle(P, T, Tab, Key, Call)
             Connection = UserInputService.InputBegan:Connect(function(Input)
                 if Input.UserInputType == Enum.UserInputType.Keyboard or (Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.MouseButton2 or Input.UserInputType == Enum.UserInputType.MouseButton3) then
                     
-                    -- Se apertar Backspace ou Delete, remove a bind
                     if Input.KeyCode == Enum.KeyCode.Backspace or Input.KeyCode == Enum.KeyCode.Delete then
                         Library.Binds[T] = nil
                         BindLabel.Text = ""
                     else
-                        -- Salva a bind (pode ser KeyCode ou UserInputType)
                         local BindData = {
                             Type = (Input.UserInputType == Enum.UserInputType.Keyboard) and "Key" or "Mouse",
                             Value = (Input.UserInputType == Enum.UserInputType.Keyboard) and Input.KeyCode or Input.UserInputType,
@@ -386,7 +378,6 @@ function Library:Toggle(P, T, Tab, Key, Call)
                         }
                         Library.Binds[T] = BindData
                         
-                        -- Atualiza texto visual
                         if BindData.Type == "Key" then
                             BindLabel.Text = "["..Input.KeyCode.Name.."]"
                         else
@@ -401,11 +392,9 @@ function Library:Toggle(P, T, Tab, Key, Call)
             end)
         end
     end)
-    
     b.LayoutOrder = GetNextOrder(P)
 end
 
--- [LISTENER GLOBAL DE BINDS]
 table.insert(Connections, UserInputService.InputBegan:Connect(function(Input, GameProcessed)
     if not GameProcessed then
         for _, BindData in pairs(Library.Binds) do
@@ -475,10 +464,10 @@ function Library:Slider(P, T, Tab, Key, Min, Max)
             Up() 
         end 
     end)
-    
     f.LayoutOrder = GetNextOrder(P)
 end
 
+-- [DROPDOWN ATUALIZADO]
 function Library:Dropdown(P, T, Opts, Tab, Key)
     local f = Instance.new("Frame", P); f.Size = UDim2.new(0.98, 0, 0, 35); f.BackgroundColor3 = Color3.fromRGB(40, 40, 45); f.ClipsDescendants = true; Instance.new("UICorner", f).CornerRadius = UDim.new(0, 4)
     local HeaderBtn = Instance.new("TextButton", f); HeaderBtn.Size = UDim2.new(1,0,0,35); HeaderBtn.BackgroundTransparency=1; HeaderBtn.Text=""
@@ -487,7 +476,8 @@ function Library:Dropdown(P, T, Opts, Tab, Key)
     local lst = Instance.new("ScrollingFrame", f); lst.Size = UDim2.new(1, 0, 0, 150); lst.Position = UDim2.new(0, 0, 0, 35); lst.BackgroundColor3 = Color3.fromRGB(35, 35, 40); lst.ScrollBarThickness = 4; lst.BorderSizePixel = 0
     Instance.new("UIListLayout", lst).SortOrder = Enum.SortOrder.LayoutOrder
     
-    local function UpdateList()
+    local function UpdateList(NewOpts)
+        Opts = NewOpts or Opts
         for _, child in pairs(lst:GetChildren()) do if child:IsA("TextButton") then child:Destroy() end end
         lst.CanvasSize = UDim2.new(0,0,0,#Opts*30)
         for _, o in pairs(Opts) do
@@ -503,9 +493,38 @@ function Library:Dropdown(P, T, Opts, Tab, Key)
         TweenService:Create(f, TweenInfo.new(0.3), {Size = UDim2.new(0.98, 0, 0, f.Size.Y.Offset == 35 and (35 + math.min(#Opts*30, 150)) or 35)}):Play() 
     end)
     f.LayoutOrder = GetNextOrder(P)
+    
+    return {
+        Refresh = function(self, list) UpdateList(list) end,
+        Set = function(self, val) Tab[Key] = val; l.Text = T .. ": " .. (val or "None") end
+    }
 end
 
--- Input para abrir/fechar o menu
+-- [FUNÇÃO RESTAURADA E CORRIGIDA] Player Dropdown
+function Library:PlayerDropdown(P, T, Tab, Key)
+    local DropdownController = Library:Dropdown(P, T, {}, Tab, Key)
+    
+    local function UpdatePlayers()
+        local Names = {}
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= Players.LocalPlayer then
+                table.insert(Names, p.Name)
+            end
+        end
+        DropdownController:Refresh(Names)
+    end
+    
+    table.insert(Connections, Players.PlayerAdded:Connect(UpdatePlayers))
+    table.insert(Connections, Players.PlayerRemoving:Connect(function(p)
+        if Tab[Key] == p.Name then
+            DropdownController:Set(nil)
+        end
+        UpdatePlayers()
+    end))
+    
+    UpdatePlayers()
+end
+
 table.insert(Connections, UserInputService.InputBegan:Connect(function(input, processed)
     if processed then return end
     if input.KeyCode == LibraryConfig.MenuKey and UI_Elements.MainFrame then 
