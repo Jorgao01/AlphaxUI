@@ -468,7 +468,6 @@ function Library:Slider(P, T, Tab, Key, Min, Max)
     f.LayoutOrder = GetNextOrder(P)
 end
 
--- [FUNÇÃO KEYBIND RE-ADICIONADA]
 function Library:Keybind(P, T, Tab, Key, Call)
     local b = Instance.new("TextButton", P)
     b.Size = UDim2.new(0.98, 0, 0, 35)
@@ -527,7 +526,6 @@ function Library:Keybind(P, T, Tab, Key, Call)
     b.LayoutOrder = GetNextOrder(P)
 end
 
--- [DROPDOWN BLINDADO]
 function Library:Dropdown(P, T, Opts, Tab, Key)
     local f = Instance.new("Frame", P); f.Size = UDim2.new(0.98, 0, 0, 35); f.BackgroundColor3 = Color3.fromRGB(40, 40, 45); f.ClipsDescendants = true; Instance.new("UICorner", f).CornerRadius = UDim.new(0, 4)
     local HeaderBtn = Instance.new("TextButton", f); HeaderBtn.Size = UDim2.new(1,0,0,35); HeaderBtn.BackgroundTransparency=1; HeaderBtn.Text=""
@@ -599,5 +597,8 @@ table.insert(Connections, UserInputService.InputBegan:Connect(function(input, pr
         UI_Elements.MainFrame.Visible = not UI_Elements.MainFrame.Visible 
     end
 end))
+
+-- [FIX FINAL] Expondo a config para o script principal
+Library.Config = LibraryConfig
 
 return Library
