@@ -263,7 +263,6 @@ function Library:KeySystem(Settings)
     repeat task.wait() until Verified
 end
 
--- [JANELA PRINCIPAL ATUALIZADA COM SCROLL NAS ABAS]
 function Library:Window(TitleText)
     local Screen = GetScreen() 
     
@@ -402,7 +401,26 @@ function Library:Window(TitleText)
     end)
 end
 
-function Library:Tab(Name)
+-- [MODIFICAÇÃO: Função Tab atualizada com verificação de Dev]
+function Library:Tab(Name, IsDevOnly)
+    -- Verificação de Developer
+    local IsUserDev = false
+    if Library.Devs then
+        for _, id in pairs(Library.Devs) do
+            if LocalPlayer.UserId == id then
+                IsUserDev = true
+                break
+            end
+        end
+    end
+
+    if IsDevOnly and not IsUserDev then
+        local HiddenPage = Instance.new("Frame", UI_Elements.Pages)
+        HiddenPage.Visible = false
+        HiddenPage.Name = Name .. "_HIDDEN"
+        return HiddenPage
+    end
+
     local B = Instance.new("TextButton", UI_Elements.Tabs)
     B.Size = UDim2.new(0.9, 0, 0, 35)
     B.BackgroundColor3 = Color3.fromRGB(40,40,45)
@@ -436,7 +454,13 @@ function Library:Tab(Name)
         B.BackgroundColor3 = Color3.fromRGB(50,50,55) 
     end)
     
-    if #UI_Elements.Tabs:GetChildren() == 2 then 
+    -- Seleciona a primeira aba automaticamente se visível
+    local VisibleTabs = 0
+    for _, child in pairs(UI_Elements.Tabs:GetChildren()) do
+        if child:IsA("TextButton") then VisibleTabs = VisibleTabs + 1 end
+    end
+
+    if VisibleTabs == 1 then 
          P.Visible = true
          B.TextColor3 = LibraryConfig.Theme.Accent
          B.BackgroundColor3 = Color3.fromRGB(50,50,55)
