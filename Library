@@ -7,7 +7,7 @@ local LocalPlayer = Players.LocalPlayer
 
 local Library = {
     Binds = {},
-    Config = { -- Configuração agora fica DENTRO da Library para acesso imediato
+    Config = { 
         MenuOpen = true,
         MenuKey = Enum.KeyCode.RightControl,
         Theme = {
@@ -26,8 +26,6 @@ local Library = {
 local UI_Elements = {}
 local ActiveNotifications = {}
 local Connections = {} 
-
--- Atalho para o tema (para não quebrar o código antigo)
 local LibraryConfig = Library.Config 
 
 -- [FUNÇÃO EXTRA] Cortar texto
@@ -126,6 +124,143 @@ function Library:Notify(Text, Duration)
             for i,v in pairs(ActiveNotifications) do if v == NotifyFrame then table.remove(ActiveNotifications, i) end end
         end
     end)
+end
+
+-- [KEY SYSTEM RESTAURADO E BLINDADO]
+function Library:KeySystem(Settings)
+    if not Settings or not Settings.Enabled then return end
+
+    local Verified = false
+    local Screen = GetScreen()
+    
+    -- Fundo escuro para bloquear a visão até verificar
+    local BlurFrame = Instance.new("Frame", Screen)
+    BlurFrame.Size = UDim2.new(1, 0, 1, 0)
+    BlurFrame.BackgroundColor3 = Color3.new(0,0,0)
+    BlurFrame.BackgroundTransparency = 0.5
+    BlurFrame.ZIndex = 9999
+    
+    local KeyFrame = Instance.new("Frame", Screen)
+    KeyFrame.Name = "KeySystemFrame"
+    KeyFrame.Size = UDim2.new(0, 0, 0, 0) 
+    KeyFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    KeyFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    KeyFrame.BackgroundColor3 = LibraryConfig.Theme.Main
+    KeyFrame.ClipsDescendants = true
+    KeyFrame.ZIndex = 10000
+    
+    Instance.new("UICorner", KeyFrame).CornerRadius = UDim.new(0, 8)
+    Instance.new("UIStroke", KeyFrame).Color = LibraryConfig.Theme.Outline
+
+    -- Draggable Logic
+    local dragging, dragInput, dragStart, startPos
+    local function update(input)
+        local delta = input.Position - dragStart
+        KeyFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+    KeyFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true; dragStart = input.Position; startPos = KeyFrame.Position
+            input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
+        end
+    end)
+    KeyFrame.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end end)
+    UserInputService.InputChanged:Connect(function(input) if input == dragInput and dragging then update(input) end end)
+
+    TweenService:Create(KeyFrame, TweenInfo.new(0.6, Enum.EasingStyle.Back), {Size = UDim2.new(0, 400, 0, 250)}):Play()
+    
+    local Title = Instance.new("TextLabel", KeyFrame)
+    Title.Text = Settings.Title or "Key System"
+    Title.Size = UDim2.new(1, 0, 0, 40)
+    Title.BackgroundTransparency = 1
+    Title.TextColor3 = LibraryConfig.Theme.Accent
+    Title.Font = Enum.Font.GothamBold
+    Title.TextSize = 20
+    
+    local InputBg = Instance.new("Frame", KeyFrame)
+    InputBg.Size = UDim2.new(0.8, 0, 0, 35)
+    InputBg.Position = UDim2.new(0.1, 0, 0, 70)
+    InputBg.BackgroundColor3 = LibraryConfig.Theme.Container
+    Instance.new("UICorner", InputBg).CornerRadius = UDim.new(0, 4)
+    local InputStroke = Instance.new("UIStroke", InputBg); InputStroke.Color = LibraryConfig.Theme.Outline
+    
+    local InputBox = Instance.new("TextBox", InputBg)
+    InputBox.Size = UDim2.new(1, -20, 1, 0)
+    InputBox.Position = UDim2.new(0, 10, 0, 0)
+    InputBox.BackgroundTransparency = 1
+    InputBox.TextColor3 = LibraryConfig.Theme.Text
+    InputBox.PlaceholderText = "Cole a Key Aqui..."
+    InputBox.PlaceholderColor3 = Color3.fromRGB(100, 100, 100)
+    InputBox.Font = Enum.Font.Gotham
+    InputBox.TextSize = 14
+    InputBox.TextXAlignment = Enum.TextXAlignment.Left
+    InputBox.Text = ""
+    
+    local CheckBtn = Instance.new("TextButton", KeyFrame)
+    CheckBtn.Text = "Verificar Key"
+    CheckBtn.Size = UDim2.new(0.8, 0, 0, 35)
+    CheckBtn.Position = UDim2.new(0.1, 0, 0, 115)
+    CheckBtn.BackgroundColor3 = LibraryConfig.Theme.Accent
+    CheckBtn.TextColor3 = Color3.fromRGB(20, 20, 20)
+    CheckBtn.Font = Enum.Font.GothamBold
+    CheckBtn.TextSize = 14
+    Instance.new("UICorner", CheckBtn).CornerRadius = UDim.new(0, 4)
+    
+    local LinkContainer = Instance.new("Frame", KeyFrame)
+    LinkContainer.Size = UDim2.new(0.8, 0, 0, 35)
+    LinkContainer.Position = UDim2.new(0.1, 0, 0, 160)
+    LinkContainer.BackgroundTransparency = 1
+    
+    local function CreateLinkBtn(Text, Url, PosX, SizeX)
+        local LBtn = Instance.new("TextButton", LinkContainer)
+        LBtn.Text = Text
+        LBtn.Size = UDim2.new(SizeX, 0, 1, 0)
+        LBtn.Position = UDim2.new(PosX, 0, 0, 0)
+        LBtn.BackgroundColor3 = LibraryConfig.Theme.Container
+        LBtn.TextColor3 = LibraryConfig.Theme.Text
+        LBtn.Font = Enum.Font.GothamBold
+        LBtn.TextSize = 12
+        Instance.new("UICorner", LBtn).CornerRadius = UDim.new(0, 4)
+        Instance.new("UIStroke", LBtn).Color = LibraryConfig.Theme.Outline
+        
+        LBtn.MouseButton1Click:Connect(function()
+            if setclipboard then
+                setclipboard(Url)
+                Library:Notify("Link copiado para a área de transferência!", 2)
+            else
+                Library:Notify("Seu executor não suporta setclipboard", 3)
+            end
+        end)
+    end
+    
+    if Settings.Link1 and Settings.Link2 then
+        CreateLinkBtn("Link da Key 1", Settings.Link1, 0, 0.48)
+        CreateLinkBtn("Link da Key 2", Settings.Link2, 0.52, 0.48)
+    elseif Settings.Link1 then
+        CreateLinkBtn("Pegar Key (Link)", Settings.Link1, 0, 1)
+    end
+    
+    local function Check()
+        if InputBox.Text == Settings.Key then
+            Library:Notify("Key Correta! Carregando...", 2)
+            TweenService:Create(KeyFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0,0,0,0)}):Play()
+            BlurFrame:Destroy()
+            task.wait(0.4)
+            KeyFrame:Destroy()
+            Verified = true
+        else
+            Library:Notify("Key Inválida!", 2)
+            InputBox.Text = ""
+            local OldColor = InputStroke.Color
+            InputStroke.Color = Color3.fromRGB(255, 50, 50)
+            task.delay(0.5, function() InputStroke.Color = OldColor end)
+        end
+    end
+    
+    CheckBtn.MouseButton1Click:Connect(Check)
+
+    -- Pausa o script até verificar
+    repeat task.wait() until Verified
 end
 
 -- [JANELA PRINCIPAL]
@@ -316,7 +451,7 @@ end
 
 -- [TOGGLE BLINDADA]
 function Library:Toggle(P, T, Tab, Key, Call)
-    Tab = Tab or {} -- PROTEÇÃO: Se a tabela for nil, cria uma vazia para não crashar
+    Tab = Tab or {} 
     
     local b = Instance.new("TextButton", P)
     b.Size = UDim2.new(0.98, 0, 0, 35)
@@ -428,7 +563,7 @@ end
 
 -- [SLIDER BLINDADO]
 function Library:Slider(P, T, Tab, Key, Min, Max)
-    Tab = Tab or {} -- PROTEÇÃO
+    Tab = Tab or {} 
     
     local f = Instance.new("Frame", P)
     f.Size = UDim2.new(0.98, 0, 0, 45)
@@ -456,7 +591,7 @@ function Library:Slider(P, T, Tab, Key, Min, Max)
     Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
     
     local function Up() 
-        local v = Tab[Key] or Min -- Proteção se o valor for nil
+        local v = Tab[Key] or Min 
         local p = (v - Min) / (Max - Min)
         fill.Size = UDim2.new(p, 0, 1, 0)
         l.Text = T .. ": " .. v 
@@ -476,9 +611,9 @@ function Library:Slider(P, T, Tab, Key, Min, Max)
     f.LayoutOrder = GetNextOrder(P)
 end
 
--- [KEYBIND BLINDADA (AQUELA QUE DAVA ERRO)]
+-- [KEYBIND]
 function Library:Keybind(P, T, Tab, Key, Call)
-    Tab = Tab or {} -- PROTEÇÃO CRÍTICA AQUI
+    Tab = Tab or {} 
     
     local b = Instance.new("TextButton", P)
     b.Size = UDim2.new(0.98, 0, 0, 35)
@@ -505,7 +640,6 @@ function Library:Keybind(P, T, Tab, Key, Call)
     k.TextXAlignment = Enum.TextXAlignment.Right
     
     local function UpdateText()
-        -- Se Tab for nil (o que não deve acontecer por causa da proteção), ele não quebra
         local val = Tab[Key]
         if val == nil or val == Enum.KeyCode.Unknown then
             k.Text = "[ None ]" 
@@ -540,7 +674,7 @@ end
 
 -- [DROPDOWN BLINDADO]
 function Library:Dropdown(P, T, Opts, Tab, Key)
-    Tab = Tab or {} -- PROTEÇÃO
+    Tab = Tab or {}
     
     local f = Instance.new("Frame", P); f.Size = UDim2.new(0.98, 0, 0, 35); f.BackgroundColor3 = Color3.fromRGB(40, 40, 45); f.ClipsDescendants = true; Instance.new("UICorner", f).CornerRadius = UDim.new(0, 4)
     local HeaderBtn = Instance.new("TextButton", f); HeaderBtn.Size = UDim2.new(1,0,0,35); HeaderBtn.BackgroundTransparency=1; HeaderBtn.Text=""
@@ -612,5 +746,8 @@ table.insert(Connections, UserInputService.InputBegan:Connect(function(input, pr
         UI_Elements.MainFrame.Visible = not UI_Elements.MainFrame.Visible 
     end
 end))
+
+-- Expondo config no final (caso precise)
+Library.Config = LibraryConfig
 
 return Library
