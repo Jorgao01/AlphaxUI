@@ -164,6 +164,132 @@ function Library:Watermark(Name)
     table.insert(Connections, conn)
 end
 
+-- Adicione isso logo após a função Library:Notify ou antes de Library:Window
+
+function Library:KeySystem(Settings)
+    if not Settings or not Settings.Enabled then return end
+
+    local Verified = false
+    local Screen = GetScreen()
+    
+    local KeyFrame = Instance.new("Frame", Screen)
+    KeyFrame.Name = "KeySystemFrame"
+    KeyFrame.Size = UDim2.new(0, 0, 0, 0) -- Começa pequeno para animação
+    KeyFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    KeyFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    KeyFrame.BackgroundColor3 = LibraryConfig.Theme.Main
+    KeyFrame.ClipsDescendants = true
+    
+    Instance.new("UICorner", KeyFrame).CornerRadius = UDim.new(0, 8)
+    Instance.new("UIStroke", KeyFrame).Color = LibraryConfig.Theme.Outline
+
+    TweenService:Create(KeyFrame, TweenInfo.new(0.6, Enum.EasingStyle.Back), {Size = UDim2.new(0, 400, 0, 250)}):Play()
+    
+    local Title = Instance.new("TextLabel", KeyFrame)
+    Title.Text = Settings.Title or "Key System"
+    Title.Size = UDim2.new(1, 0, 0, 40)
+    Title.BackgroundTransparency = 1
+    Title.TextColor3 = LibraryConfig.Theme.Accent
+    Title.Font = Enum.Font.GothamBold
+    Title.TextSize = 20
+    
+    local Sub = Instance.new("TextLabel", KeyFrame)
+    Sub.Text = "Enter your key to access the script"
+    Sub.Size = UDim2.new(1, 0, 0, 20)
+    Sub.Position = UDim2.new(0, 0, 0, 35)
+    Sub.BackgroundTransparency = 1
+    Sub.TextColor3 = Color3.fromRGB(150, 150, 150)
+    Sub.Font = Enum.Font.Gotham
+    Sub.TextSize = 12
+    
+    local InputBg = Instance.new("Frame", KeyFrame)
+    InputBg.Size = UDim2.new(0.8, 0, 0, 35)
+    InputBg.Position = UDim2.new(0.1, 0, 0, 70)
+    InputBg.BackgroundColor3 = LibraryConfig.Theme.Container
+    Instance.new("UICorner", InputBg).CornerRadius = UDim.new(0, 4)
+    Instance.new("UIStroke", InputBg).Color = LibraryConfig.Theme.Outline
+    
+    local InputBox = Instance.new("TextBox", InputBg)
+    InputBox.Size = UDim2.new(1, -20, 1, 0)
+    InputBox.Position = UDim2.new(0, 10, 0, 0)
+    InputBox.BackgroundTransparency = 1
+    InputBox.TextColor3 = LibraryConfig.Theme.Text
+    InputBox.PlaceholderText = "Paste Key Here..."
+    InputBox.PlaceholderColor3 = Color3.fromRGB(100, 100, 100)
+    InputBox.Font = Enum.Font.Gotham
+    InputBox.TextSize = 14
+    InputBox.TextXAlignment = Enum.TextXAlignment.Left
+    InputBox.Text = ""
+    
+    local CheckBtn = Instance.new("TextButton", KeyFrame)
+    CheckBtn.Text = "Check Key"
+    CheckBtn.Size = UDim2.new(0.8, 0, 0, 35)
+    CheckBtn.Position = UDim2.new(0.1, 0, 0, 115)
+    CheckBtn.BackgroundColor3 = LibraryConfig.Theme.Accent
+    CheckBtn.TextColor3 = Color3.fromRGB(20, 20, 20)
+    CheckBtn.Font = Enum.Font.GothamBold
+    CheckBtn.TextSize = 14
+    Instance.new("UICorner", CheckBtn).CornerRadius = UDim.new(0, 4)
+    
+    local LinkContainer = Instance.new("Frame", KeyFrame)
+    LinkContainer.Size = UDim2.new(0.8, 0, 0, 35)
+    LinkContainer.Position = UDim2.new(0.1, 0, 0, 160)
+    LinkContainer.BackgroundTransparency = 1
+    
+    local function CreateLinkBtn(Text, Url, PosX, SizeX)
+        local LBtn = Instance.new("TextButton", LinkContainer)
+        LBtn.Text = Text
+        LBtn.Size = UDim2.new(SizeX, 0, 1, 0)
+        LBtn.Position = UDim2.new(PosX, 0, 0, 0)
+        LBtn.BackgroundColor3 = LibraryConfig.Theme.Container
+        LBtn.TextColor3 = LibraryConfig.Theme.Text
+        LBtn.Font = Enum.Font.GothamBold
+        LBtn.TextSize = 12
+        Instance.new("UICorner", LBtn).CornerRadius = UDim.new(0, 4)
+        Instance.new("UIStroke", LBtn).Color = LibraryConfig.Theme.Outline
+        
+        LBtn.MouseButton1Click:Connect(function()
+            if setclipboard then
+                setclipboard(Url)
+                Library:Notify("Link Copied to Clipboard!", 2)
+            else
+                Library:Notify("Your executor doesn't support clipboard", 3)
+            end
+        end)
+    end
+    
+    if Settings.Link1 and Settings.Link2 then
+        CreateLinkBtn("Get Key (Link 1)", Settings.Link1, 0, 0.48)
+        CreateLinkBtn("Get Key (Link 2)", Settings.Link2, 0.52, 0.48)
+    elseif Settings.Link1 then
+        CreateLinkBtn("Get Key Link", Settings.Link1, 0, 1)
+    end
+    
+    local function Check()
+        if InputBox.Text == Settings.Key then
+            Library:Notify("Key Correct! Loading...", 2)
+            TweenService:Create(KeyFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0,0,0,0)}):Play()
+            task.wait(0.4)
+            KeyFrame:Destroy()
+            Verified = true
+        else
+            Library:Notify("Invalid Key!", 2)
+            InputBox.Text = ""
+            -- Efeito de erro (tremida leve ou flash vermelho)
+            local Stroke = InputBg:FindFirstChild("UIStroke")
+            if Stroke then 
+                local OldColor = Stroke.Color
+                Stroke.Color = Color3.fromRGB(255, 50, 50)
+                task.delay(0.5, function() Stroke.Color = OldColor end)
+            end
+        end
+    end
+    
+    CheckBtn.MouseButton1Click:Connect(Check)
+
+    repeat task.wait() until Verified
+end
+
 function Library:Window(TitleText)
     local Screen = GetScreen() 
     
