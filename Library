@@ -196,7 +196,7 @@ function Library:Window(TitleText)
     Instance.new("UIPadding", TabsC).PaddingTop = UDim.new(0, 10)
     UI_Elements.Tabs = TabsC
     
-    -- [[ USER PROFILE (COM PROTEÇÃO E LIMITE) ]] --
+    -- [[ USER PROFILE ]] --
     local ProfileFrame = Instance.new("Frame", Main)
     ProfileFrame.Name = "UserProfile"
     ProfileFrame.Size = UDim2.new(0, SidebarWidth, 0, 50)
@@ -311,6 +311,7 @@ function Library:Section(P, Text)
     l.LayoutOrder = GetNextOrder(P)
 end
 
+-- [TOGGLE COM BIND CORRIGIDA (AGUARDA O CLIQUE)]
 function Library:Toggle(P, T, Tab, Key, Call)
     local b = Instance.new("TextButton", P)
     b.Size = UDim2.new(0.98, 0, 0, 35)
@@ -359,8 +360,10 @@ function Library:Toggle(P, T, Tab, Key, Call)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             ToggleAction()
         elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
+            -- [CORREÇÃO] Wait para não registrar o próprio clique direito como bind instantaneamente
             BindLabel.Text = "..."
             BindLabel.TextColor3 = LibraryConfig.Theme.BindWait
+            task.wait(0.2) 
             
             local Connection
             Connection = UserInputService.InputBegan:Connect(function(Input)
@@ -466,14 +469,14 @@ function Library:Slider(P, T, Tab, Key, Min, Max)
     f.LayoutOrder = GetNextOrder(P)
 end
 
--- [DROPDOWN CORRIGIDO - COM PROTEÇÃO ANTI-CRASH]
+-- [DROPDOWN BLINDADO]
 function Library:Dropdown(P, T, Opts, Tab, Key)
     local f = Instance.new("Frame", P); f.Size = UDim2.new(0.98, 0, 0, 35); f.BackgroundColor3 = Color3.fromRGB(40, 40, 45); f.ClipsDescendants = true; Instance.new("UICorner", f).CornerRadius = UDim.new(0, 4)
     local HeaderBtn = Instance.new("TextButton", f); HeaderBtn.Size = UDim2.new(1,0,0,35); HeaderBtn.BackgroundTransparency=1; HeaderBtn.Text=""
     local l = Instance.new("TextLabel", f)
     
-    -- [CORREÇÃO AQUI] Usamos tostring() para garantir que não tente somar tabela com texto
-    l.Text = tostring(T) .. ": " .. tostring(Tab[Key] or "None")
+    -- [CORREÇÃO CRÍTICA] Usando string.format para evitar o erro "concatenate string with table"
+    l.Text = string.format("%s: %s", tostring(T), tostring(Tab[Key] or "None"))
     
     l.Size = UDim2.new(1, -35, 0, 35); l.Position = UDim2.new(0, 10, 0, 0); l.BackgroundTransparency = 1; l.TextColor3 = LibraryConfig.Theme.Text; l.Font = Enum.Font.Gotham; l.TextSize = 12; l.TextXAlignment = Enum.TextXAlignment.Left
     
@@ -489,7 +492,7 @@ function Library:Dropdown(P, T, Opts, Tab, Key)
             ob.MouseButton1Click:Connect(function() 
                 Tab[Key] = o
                 -- [CORREÇÃO AQUI TAMBÉM]
-                l.Text = tostring(T) .. ": " .. tostring(o)
+                l.Text = string.format("%s: %s", tostring(T), tostring(o))
                 TweenService:Create(f, TweenInfo.new(0.3), {Size = UDim2.new(0.98, 0, 0, 35)}):Play() 
             end)
         end
@@ -505,7 +508,7 @@ function Library:Dropdown(P, T, Opts, Tab, Key)
         Refresh = function(self, list) UpdateList(list) end,
         Set = function(self, val) 
             Tab[Key] = val
-            l.Text = tostring(T) .. ": " .. tostring(val or "None") 
+            l.Text = string.format("%s: %s", tostring(T), tostring(val or "None"))
         end
     }
 end
