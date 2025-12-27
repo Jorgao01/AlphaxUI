@@ -680,7 +680,7 @@ function Library:Keybind(P, T, Tab, Key, Call)
             k.TextColor3 = LibraryConfig.Theme.SubText
         else
             k.Text = "[" .. val.Name .. "]"
-            k.TextColor3 = LibraryConfig.Theme.Accent
+            k.TextColor3 = LibraryConfig.Theme.Text
         end
     end
     UpdateText() 
