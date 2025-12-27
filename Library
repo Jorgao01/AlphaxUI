@@ -293,7 +293,7 @@ function Library:Window(TitleText)
     
     local Title = Instance.new("TextLabel", Top)
     Title.Text = TitleText
-    Title.TextColor3 = LibraryConfig.Theme.Accent
+    Title.TextColor3 = LibraryConfig.Theme.Text
     Title.Font = Enum.Font.GothamBold
     Title.TextSize = 18
     Title.Size = UDim2.new(1, -50, 1, 0)
