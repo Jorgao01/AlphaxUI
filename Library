@@ -11,8 +11,10 @@ local Library = {
         MenuOpen = true,
         MenuKey = Enum.KeyCode.RightControl,
         Theme = {
-            Main = Color3.fromRGB(25, 20, 0),
+            Main = Color3.fromRGB(44, 47, 51),
             Container = Color3.fromRGB(30, 30, 35),
+            TabTextColor = Color3.fromRGB(240, 240, 240),
+            BgButtonColor = Color3.fromRGB(30, 30, 35),
             Accent = Color3.fromRGB(0, 0, 240),
             Text = Color3.fromRGB(240, 240, 240),
             SubText = Color3.fromRGB(150, 150, 150),
@@ -450,7 +452,7 @@ function Library:Tab(Name, IsDevOnly)
             end 
         end
         P.Visible = true
-        B.TextColor3 = LibraryConfig.Theme.Accent
+        B.TextColor3 = LibraryConfig.Theme.TabTextColor
         B.BackgroundColor3 = Color3.fromRGB(50,50,55) 
     end)
     
@@ -584,7 +586,7 @@ end))
 function Library:Button(P, T, C) 
     local b = Instance.new("TextButton", P)
     b.Size = UDim2.new(0.98, 0, 0, 35)
-    b.BackgroundColor3 = LibraryConfig.Theme.Accent
+    b.BackgroundColor3 = LibraryConfig.Theme.BgButtonColor
     b.Text = T
     b.TextColor3 = Color3.new(0.1, 0.1, 0.1)
     b.Font = Enum.Font.GothamBold
