@@ -274,7 +274,7 @@ function Library:KeySystem(Settings)
     repeat task.wait() until Verified
 end
 
--- [JANELA PRINCIPAL COM TÍTULO E SUBTÍTULO]
+-- [JANELA PRINCIPAL ATUALIZADA COM MINIMIZAR E MAXIMIZAR]
 function Library:Window(TitleText, SubTitleText)
     local Screen = GetScreen() 
     
@@ -295,8 +295,9 @@ function Library:Window(TitleText, SubTitleText)
     Instance.new("UIStroke", Main).Color = LibraryConfig.Theme.Outline
     UI_Elements.MainFrame = Main 
 
-    local TargetSize = UDim2.new(0, 580, 0, 500)
-    TweenService:Create(Main, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = TargetSize}):Play()
+    -- Tamanho padrão da UI
+    local DefaultSize = UDim2.new(0, 580, 0, 500)
+    TweenService:Create(Main, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = DefaultSize}):Play()
     
     local Top = Instance.new("Frame", Main)
     Top.Size = UDim2.new(1, 0, 0, 45)
@@ -310,11 +311,9 @@ function Library:Window(TitleText, SubTitleText)
     Title.TextXAlignment = Enum.TextXAlignment.Left
     Title.BackgroundTransparency = 1
     
-    -- Verifica se tem subtítulo
     if SubTitleText and SubTitleText ~= "" then
-        -- Com Subtítulo: Título menor, texto embaixo
         Title.TextSize = 15 
-        Title.Size = UDim2.new(1, -50, 0, 20)
+        Title.Size = UDim2.new(1, -140, 0, 20) -- Ajustei largura para não bater nos botões
         Title.Position = UDim2.new(0, 20, 0, 6)
         
         local SubTitle = Instance.new("TextLabel", Top)
@@ -322,29 +321,105 @@ function Library:Window(TitleText, SubTitleText)
         SubTitle.TextColor3 = LibraryConfig.Theme.SubText
         SubTitle.Font = Enum.Font.Gotham
         SubTitle.TextSize = 12
-        SubTitle.Size = UDim2.new(1, -50, 0, 15)
+        SubTitle.Size = UDim2.new(1, -140, 0, 15)
         SubTitle.Position = UDim2.new(0, 20, 0, 24)
         SubTitle.TextXAlignment = Enum.TextXAlignment.Left
         SubTitle.BackgroundTransparency = 1
     else
-        -- Sem Subtítulo: Título maior, centralizado
         Title.TextSize = 18
-        Title.Size = UDim2.new(1, -50, 1, 0)
+        Title.Size = UDim2.new(1, -140, 1, 0)
         Title.Position = UDim2.new(0, 20, 0, 0)
     end
     
+    -- [VARIÁVEIS DE CONTROLE]
+    local isMinimized = false
+    local isMaximized = false
+    local PreMaximizePos = UDim2.new(0.5, 0, 0.5, 0) -- Salva posição antes de maximizar
+    local PreMaximizeSize = DefaultSize -- Salva tamanho antes de maximizar
+
+    -- [[ BOTÃO FECHAR (X) ]] --
     local Close = Instance.new("TextButton", Top)
+    Close.Name = "CloseBtn"
     Close.Text = "X"
     Close.Size = UDim2.new(0, 45, 1, 0)
     Close.Position = UDim2.new(1, -45, 0, 0)
     Close.BackgroundTransparency = 1
-    Close.TextColor3 = Color3.new(0.8, 0.2, 0.2)
+    Close.TextColor3 = Color3.fromRGB(255, 100, 100) -- Vermelho claro
     Close.Font = Enum.Font.GothamBold
     Close.TextSize = 18
     Close.MouseButton1Click:Connect(function() 
         TweenService:Create(Main, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0,0,0,0)}):Play()
         task.wait(0.4)
         Library:Unload()
+    end)
+
+    -- [[ BOTÃO MAXIMIZAR (Quadrado) ]] --
+    local Maximize = Instance.new("TextButton", Top)
+    Maximize.Name = "MaxBtn"
+    Maximize.Text = "□" -- Ícone simples de quadrado
+    Maximize.Size = UDim2.new(0, 45, 1, 0)
+    Maximize.Position = UDim2.new(1, -90, 0, 0) -- Ao lado do fechar
+    Maximize.BackgroundTransparency = 1
+    Maximize.TextColor3 = LibraryConfig.Theme.SubText
+    Maximize.Font = Enum.Font.GothamBold
+    Maximize.TextSize = 18
+
+    Maximize.MouseButton1Click:Connect(function()
+        isMaximized = not isMaximized
+        
+        if isMaximized then
+            -- Salva estado atual antes de maximizar
+            PreMaximizePos = Main.Position
+            -- Se não estiver minimizado, salva o tamanho atual, senão usa o padrão
+            if not isMinimized then PreMaximizeSize = Main.Size end
+            
+            isMinimized = false -- Garante que abra se estiver minimizado
+            
+            -- Ocupa a tela toda
+            TweenService:Create(Main, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                Size = UDim2.new(1, 0, 1, 0),
+                Position = UDim2.new(0.5, 0, 0.5, 0),
+                AnchorPoint = Vector2.new(0.5, 0.5)
+            }):Play()
+        else
+            -- Restaura tamanho original (DefaultSize)
+            TweenService:Create(Main, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                Size = DefaultSize,
+                Position = PreMaximizePos
+            }):Play()
+        end
+    end)
+
+    -- [[ BOTÃO MINIMIZAR (Traço) ]] --
+    local Minimize = Instance.new("TextButton", Top)
+    Minimize.Name = "MinBtn"
+    Minimize.Text = "-"
+    Minimize.Size = UDim2.new(0, 45, 1, 0)
+    Minimize.Position = UDim2.new(1, -135, 0, 0) -- Ao lado do maximizar
+    Minimize.BackgroundTransparency = 1
+    Minimize.TextColor3 = LibraryConfig.Theme.SubText
+    Minimize.Font = Enum.Font.GothamBold
+    Minimize.TextSize = 24 -- Um pouco maior para o traço ficar visível
+
+    Minimize.MouseButton1Click:Connect(function()
+        isMinimized = not isMinimized
+        
+        if isMinimized then
+            -- Se estiver maximizado, salva isso pra depois
+            if not isMaximized then PreMaximizeSize = Main.Size end
+            
+            -- Recolhe deixando só a barra (Altura 45)
+            TweenService:Create(Main, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Size = UDim2.new(Main.Size.X.Scale, Main.Size.X.Offset, 0, 45)
+            }):Play()
+        else
+            -- Abre de volta
+            local RestoreSize = isMaximized and UDim2.new(1,0,1,0) or DefaultSize
+            
+            TweenService:Create(Main, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+                Size = RestoreSize
+            }):Play()
+        end
     end)
     
     local SidebarWidth = 140
@@ -419,7 +494,10 @@ function Library:Window(TitleText, SubTitleText)
     local drag, startPos, dragStart
     local function UpdateInput(input)
         local delta = input.Position - dragStart
-        Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        -- Se estiver maximizado, não permite arrastar (opcional, mas recomendado)
+        if not isMaximized then
+            Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
     end
     Top.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
