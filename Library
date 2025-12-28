@@ -291,28 +291,35 @@ function Library:Window(TitleText, SubTitleText)
     Top.Size = UDim2.new(1, 0, 0, 45)
     Top.BackgroundTransparency = 1
     
-    -- [[ TÍTULO PRINCIPAL EDITADO ]] --
+    -- [[ LÓGICA DO TÍTULO DINÂMICO ]] --
     local Title = Instance.new("TextLabel", Top)
     Title.Text = TitleText
     Title.TextColor3 = LibraryConfig.Theme.Text
     Title.Font = Enum.Font.GothamBold
-    Title.TextSize = 15 -- Diminuído (era 18)
-    Title.Size = UDim2.new(1, -50, 0, 20) -- Altura fixa menor
-    Title.Position = UDim2.new(0, 20, 0, 6) -- Movido para CIMA (antes era centralizado no 0)
     Title.TextXAlignment = Enum.TextXAlignment.Left
     Title.BackgroundTransparency = 1
     
-    -- [[ NOVO SUBTÍTULO ]] --
+    -- Verifica se existe subtítulo e se não está vazio
     if SubTitleText and SubTitleText ~= "" then
+        -- MODO COM SUBTÍTULO (Título menor e mais alto)
+        Title.TextSize = 15 
+        Title.Size = UDim2.new(1, -50, 0, 20)
+        Title.Position = UDim2.new(0, 20, 0, 6)
+        
         local SubTitle = Instance.new("TextLabel", Top)
         SubTitle.Text = SubTitleText
-        SubTitle.TextColor3 = LibraryConfig.Theme.SubText -- Cor mais escura (cinza)
+        SubTitle.TextColor3 = LibraryConfig.Theme.SubText
         SubTitle.Font = Enum.Font.Gotham
-        SubTitle.TextSize = 12 -- Fonte menor
+        SubTitle.TextSize = 12
         SubTitle.Size = UDim2.new(1, -50, 0, 15)
-        SubTitle.Position = UDim2.new(0, 20, 0, 24) -- Posicionado logo abaixo do título
+        SubTitle.Position = UDim2.new(0, 20, 0, 24)
         SubTitle.TextXAlignment = Enum.TextXAlignment.Left
         SubTitle.BackgroundTransparency = 1
+    else
+        -- MODO SEM SUBTÍTULO (Título grande e centralizado - Original)
+        Title.TextSize = 18
+        Title.Size = UDim2.new(1, -50, 1, 0)
+        Title.Position = UDim2.new(0, 20, 0, 0)
     end
     
     local Close = Instance.new("TextButton", Top)
