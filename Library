@@ -451,7 +451,7 @@ function Library:Tab(Name, IsDevOnly)
             end 
         end
         P.Visible = true
-        B.TextColor3 = LibraryConfig.Theme.TabTextColor
+        B.TextColor3 = LibraryConfig.Theme.Text
         B.BackgroundColor3 = Color3.fromRGB(50,50,55) 
     end)
     
@@ -463,7 +463,7 @@ function Library:Tab(Name, IsDevOnly)
 
     if VisibleTabs == 1 then 
          P.Visible = true
-         B.TextColor3 = LibraryConfig.Theme.Accent
+         B.TextColor3 = LibraryConfig.Theme.Text
          B.BackgroundColor3 = Color3.fromRGB(50,50,55)
     end
     
