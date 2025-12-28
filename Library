@@ -264,7 +264,7 @@ function Library:KeySystem(Settings)
     repeat task.wait() until Verified
 end
 
-function Library:Window(TitleText)
+function Library:Window(TitleText, SubTitleText)
     local Screen = GetScreen() 
     
     if not UI_Elements.NotifyHolder then
@@ -291,15 +291,29 @@ function Library:Window(TitleText)
     Top.Size = UDim2.new(1, 0, 0, 45)
     Top.BackgroundTransparency = 1
     
+    -- [[ TÍTULO PRINCIPAL EDITADO ]] --
     local Title = Instance.new("TextLabel", Top)
     Title.Text = TitleText
     Title.TextColor3 = LibraryConfig.Theme.Text
     Title.Font = Enum.Font.GothamBold
-    Title.TextSize = 18
-    Title.Size = UDim2.new(1, -50, 1, 0)
-    Title.Position = UDim2.new(0, 20, 0, 0)
+    Title.TextSize = 15 -- Diminuído (era 18)
+    Title.Size = UDim2.new(1, -50, 0, 20) -- Altura fixa menor
+    Title.Position = UDim2.new(0, 20, 0, 6) -- Movido para CIMA (antes era centralizado no 0)
     Title.TextXAlignment = Enum.TextXAlignment.Left
     Title.BackgroundTransparency = 1
+    
+    -- [[ NOVO SUBTÍTULO ]] --
+    if SubTitleText and SubTitleText ~= "" then
+        local SubTitle = Instance.new("TextLabel", Top)
+        SubTitle.Text = SubTitleText
+        SubTitle.TextColor3 = LibraryConfig.Theme.SubText -- Cor mais escura (cinza)
+        SubTitle.Font = Enum.Font.Gotham
+        SubTitle.TextSize = 12 -- Fonte menor
+        SubTitle.Size = UDim2.new(1, -50, 0, 15)
+        SubTitle.Position = UDim2.new(0, 20, 0, 24) -- Posicionado logo abaixo do título
+        SubTitle.TextXAlignment = Enum.TextXAlignment.Left
+        SubTitle.BackgroundTransparency = 1
+    end
     
     local Close = Instance.new("TextButton", Top)
     Close.Text = "X"
@@ -319,18 +333,16 @@ function Library:Window(TitleText)
     local SidebarPadding = 15
     local UserProfileHeight = 60
 
-    -- [[ ALTERAÇÃO AQUI: Mudado de Frame para ScrollingFrame ]] --
     local TabsC = Instance.new("ScrollingFrame", Main) 
     TabsC.Name = "TabsContainer"
     TabsC.Size = UDim2.new(0, SidebarWidth, 1, -(55 + UserProfileHeight)) 
     TabsC.Position = UDim2.new(0, SidebarPadding, 0, 45) 
     TabsC.BackgroundColor3 = LibraryConfig.Theme.Container
     
-    -- Configurações da Barra de Rolagem
-    TabsC.ScrollBarThickness = 2 -- Espessura fina para ficar bonito
-    TabsC.ScrollBarImageColor3 = LibraryConfig.Theme.Accent -- Cor da barra igual ao tema
-    TabsC.AutomaticCanvasSize = Enum.AutomaticSize.Y -- Calcula altura auto
-    TabsC.CanvasSize = UDim2.new(0,0,0,0) -- Zera para o auto funcionar
+    TabsC.ScrollBarThickness = 2 
+    TabsC.ScrollBarImageColor3 = LibraryConfig.Theme.Accent 
+    TabsC.AutomaticCanvasSize = Enum.AutomaticSize.Y 
+    TabsC.CanvasSize = UDim2.new(0,0,0,0) 
     TabsC.BorderSizePixel = 0
     
     Instance.new("UICorner", TabsC).CornerRadius = UDim.new(0, 6)
