@@ -864,18 +864,27 @@ function Library:ColorPicker(P, T, Tab, Key, Default, Call)
     end
 
     -- Lógica para digitar HEX
-    HexBox.FocusLost:Connect(function(enter)
-        if enter then
-            local Success, Result = pcall(function() return Color3.fromHex(HexBox.Text) end)
-            if Success and Result then
-                h, s, v = Color3.toHSV(Result)
-                -- Atualiza posições visuais
-                SVPicker.Position = UDim2.new(s, -3, 1 - v, -3)
-                HuePicker.Position = UDim2.new(h, 0, 0, 0)
-                UpdateColor()
-            else
-                HexBox.Text = ToHex(Tab[Key]) -- Reseta se for inválido
-            end
+    -- ATUALIZADO: Agora funciona ao perder o foco (clicar fora), não só no Enter
+    HexBox.FocusLost:Connect(function()
+        -- 1. Se estiver vazio ou só espaços, restaura a cor anterior
+        if HexBox.Text:gsub(" ", "") == "" then
+            HexBox.Text = ToHex(Tab[Key])
+            return
+        end
+
+        -- 2. Tenta converter o texto para cor
+        local Success, Result = pcall(function() return Color3.fromHex(HexBox.Text) end)
+        
+        if Success and Result then
+            -- Se for válido
+            h, s, v = Color3.toHSV(Result)
+            -- Atualiza posições visuais
+            SVPicker.Position = UDim2.new(s, -3, 1 - v, -3)
+            HuePicker.Position = UDim2.new(h, 0, 0, 0)
+            UpdateColor()
+        else
+            -- Se for inválido, restaura a cor anterior
+            HexBox.Text = ToHex(Tab[Key])
         end
     end)
 
