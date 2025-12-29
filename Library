@@ -808,156 +808,88 @@ function Library:Keybind(P, T, Tab, Key, Call)
     b.LayoutOrder = GetNextOrder(P)
 end
 
+-- [[ FUNÇÃO COLOR PICKER ATUALIZADA COM HEX ]] --
 function Library:ColorPicker(P, T, Tab, Key, Default, Call)
     Tab = Tab or {}
     Default = Default or Color3.fromRGB(255, 255, 255)
     Tab[Key] = Tab[Key] or Default
-
     local h, s, v = Color3.toHSV(Tab[Key])
     
-    -- [Container Principal]
-    local PickerFrame = Instance.new("Frame", P)
-    PickerFrame.Size = UDim2.new(0.98, 0, 0, 35) -- Altura inicial fechada
-    PickerFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-    PickerFrame.ClipsDescendants = true
-    Instance.new("UICorner", PickerFrame).CornerRadius = UDim.new(0, 4)
-    PickerFrame.LayoutOrder = GetNextOrder(P)
-
-    -- [Botão de Abrir/Fechar]
-    local ToggleBtn = Instance.new("TextButton", PickerFrame)
-    ToggleBtn.Size = UDim2.new(1, 0, 0, 35)
-    ToggleBtn.BackgroundTransparency = 1
-    ToggleBtn.Text = ""
-    ToggleBtn.ZIndex = 2
-
-    -- [Texto e Preview]
-    local TitleLbl = Instance.new("TextLabel", ToggleBtn)
-    TitleLbl.Text = T
-    TitleLbl.Size = UDim2.new(1, -50, 1, 0)
-    TitleLbl.Position = UDim2.new(0, 10, 0, 0)
-    TitleLbl.BackgroundTransparency = 1
-    TitleLbl.TextColor3 = LibraryConfig.Theme.Text
-    TitleLbl.Font = Enum.Font.Gotham
-    TitleLbl.TextSize = 12
-    TitleLbl.TextXAlignment = Enum.TextXAlignment.Left
-
-    local ColorPreview = Instance.new("Frame", ToggleBtn)
-    ColorPreview.Size = UDim2.new(0, 20, 0, 20)
-    ColorPreview.Position = UDim2.new(1, -30, 0.5, -10)
-    ColorPreview.BackgroundColor3 = Tab[Key]
-    Instance.new("UICorner", ColorPreview).CornerRadius = UDim.new(0, 4)
-    Instance.new("UIStroke", ColorPreview).Color = LibraryConfig.Theme.Outline
-
-    -- [Área Expandida (Onde ficam os sliders)]
-    local ExpandContent = Instance.new("Frame", PickerFrame)
-    ExpandContent.Size = UDim2.new(1, 0, 0, 110)
-    ExpandContent.Position = UDim2.new(0, 0, 0, 35)
-    ExpandContent.BackgroundTransparency = 1
-    ExpandContent.Visible = false -- Esconde inicialmente
-
-    -- > Imagem do Color Picker (Saturação e Valor)
-    local SVImage = Instance.new("ImageLabel", ExpandContent)
-    SVImage.Size = UDim2.new(0, 0, 0, 80)
-    SVImage.Position = UDim2.new(0, 10, 0, 10)
-    SVImage.SizeConstraint = Enum.SizeConstraint.RelativeYY -- Quadrado
-    SVImage.Size = UDim2.new(0, 80, 0, 80) 
-    SVImage.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
-    SVImage.Image = "rbxassetid://4155801252" -- Overlay de sombra/luz
-    Instance.new("UICorner", SVImage).CornerRadius = UDim.new(0, 4)
-
-    local SVPicker = Instance.new("Frame", SVImage) -- A bolinha que segue o mouse
-    SVPicker.Size = UDim2.new(0, 6, 0, 6)
-    SVPicker.BackgroundColor3 = Color3.new(1,1,1)
-    SVPicker.Position = UDim2.new(s, -3, 1 - v, -3)
-    Instance.new("UICorner", SVPicker).CornerRadius = UDim.new(1, 0)
-
-    -- > Barra de Hue (Arco-íris)
-    local HueFrame = Instance.new("Frame", ExpandContent)
-    HueFrame.Size = UDim2.new(1, -110, 0, 20)
-    HueFrame.Position = UDim2.new(0, 100, 0, 10)
-    HueFrame.BackgroundColor3 = Color3.new(1,1,1)
-    Instance.new("UICorner", HueFrame).CornerRadius = UDim.new(0, 4)
-
-    local HueGradient = Instance.new("UIGradient", HueFrame)
-    HueGradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 0, 0)),
-        ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 255, 0)),
-        ColorSequenceKeypoint.new(0.33, Color3.fromRGB(0, 255, 0)),
-        ColorSequenceKeypoint.new(0.50, Color3.fromRGB(0, 255, 255)),
-        ColorSequenceKeypoint.new(0.67, Color3.fromRGB(0, 0, 255)),
-        ColorSequenceKeypoint.new(0.83, Color3.fromRGB(255, 0, 255)),
-        ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 0, 0))
-    })
-
-    local HuePicker = Instance.new("Frame", HueFrame) -- A linha do slider
-    HuePicker.Size = UDim2.new(0, 2, 1, 0)
-    HuePicker.BackgroundColor3 = Color3.new(1,1,1)
-    HuePicker.Position = UDim2.new(h, 0, 0, 0)
+    local PickerFrame = Instance.new("Frame", P); PickerFrame.Size = UDim2.new(0.98, 0, 0, 35); PickerFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 45); PickerFrame.ClipsDescendants = true; Instance.new("UICorner", PickerFrame).CornerRadius = UDim.new(0, 4); PickerFrame.LayoutOrder = GetNextOrder(P)
+    local ToggleBtn = Instance.new("TextButton", PickerFrame); ToggleBtn.Size = UDim2.new(1, 0, 0, 35); ToggleBtn.BackgroundTransparency = 1; ToggleBtn.Text = ""; ToggleBtn.ZIndex = 2
+    local TitleLbl = Instance.new("TextLabel", ToggleBtn); TitleLbl.Text = T; TitleLbl.Size = UDim2.new(1, -50, 1, 0); TitleLbl.Position = UDim2.new(0, 10, 0, 0); TitleLbl.BackgroundTransparency = 1; TitleLbl.TextColor3 = LibraryConfig.Theme.Text; TitleLbl.Font = Enum.Font.Gotham; TitleLbl.TextSize = 12; TitleLbl.TextXAlignment = Enum.TextXAlignment.Left
+    local ColorPreview = Instance.new("Frame", ToggleBtn); ColorPreview.Size = UDim2.new(0, 20, 0, 20); ColorPreview.Position = UDim2.new(1, -30, 0.5, -10); ColorPreview.BackgroundColor3 = Tab[Key]; Instance.new("UICorner", ColorPreview).CornerRadius = UDim.new(0, 4); Instance.new("UIStroke", ColorPreview).Color = LibraryConfig.Theme.Outline
     
-    -- [Lógica de Atualização]
-    local function UpdateColor()
+    local ExpandContent = Instance.new("Frame", PickerFrame); ExpandContent.Size = UDim2.new(1, 0, 0, 110); ExpandContent.Position = UDim2.new(0, 0, 0, 35); ExpandContent.BackgroundTransparency = 1; ExpandContent.Visible = false
+    
+    -- Quadrado SV (Saturação/Valor)
+    local SVImage = Instance.new("ImageLabel", ExpandContent); SVImage.Size = UDim2.new(0, 80, 0, 80); SVImage.Position = UDim2.new(0, 10, 0, 10); SVImage.BackgroundColor3 = Color3.fromHSV(h, 1, 1); SVImage.Image = "rbxassetid://4155801252"; Instance.new("UICorner", SVImage).CornerRadius = UDim.new(0, 4)
+    local SVPicker = Instance.new("Frame", SVImage); SVPicker.Size = UDim2.new(0, 6, 0, 6); SVPicker.BackgroundColor3 = Color3.new(1,1,1); SVPicker.Position = UDim2.new(s, -3, 1 - v, -3); Instance.new("UICorner", SVPicker).CornerRadius = UDim.new(1, 0)
+    
+    -- Barra Hue (Arco-íris)
+    local HueFrame = Instance.new("Frame", ExpandContent); HueFrame.Size = UDim2.new(1, -110, 0, 20); HueFrame.Position = UDim2.new(0, 100, 0, 10); HueFrame.BackgroundColor3 = Color3.new(1,1,1); Instance.new("UICorner", HueFrame).CornerRadius = UDim.new(0, 4)
+    local HueGradient = Instance.new("UIGradient", HueFrame); HueGradient.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.new(1,0,0)), ColorSequenceKeypoint.new(0.17, Color3.new(1,1,0)), ColorSequenceKeypoint.new(0.33, Color3.new(0,1,0)), ColorSequenceKeypoint.new(0.5, Color3.new(0,1,1)), ColorSequenceKeypoint.new(0.67, Color3.new(0,0,1)), ColorSequenceKeypoint.new(0.83, Color3.new(1,0,1)), ColorSequenceKeypoint.new(1, Color3.new(1,0,0))})
+    local HuePicker = Instance.new("Frame", HueFrame); HuePicker.Size = UDim2.new(0, 2, 1, 0); HuePicker.BackgroundColor3 = Color3.new(1,1,1); HuePicker.Position = UDim2.new(h, 0, 0, 0)
+
+    -- [[ NOVO: HEX INPUT BOX ]] --
+    local HexFrame = Instance.new("Frame", ExpandContent)
+    HexFrame.Size = UDim2.new(1, -110, 0, 25) -- Largura preenche o espaço restante
+    HexFrame.Position = UDim2.new(0, 100, 0, 45) -- Embaixo da barra Hue
+    HexFrame.BackgroundColor3 = LibraryConfig.Theme.Main
+    Instance.new("UICorner", HexFrame).CornerRadius = UDim.new(0, 4)
+    Instance.new("UIStroke", HexFrame).Color = LibraryConfig.Theme.Outline
+    
+    local HexBox = Instance.new("TextBox", HexFrame)
+    HexBox.Size = UDim2.new(1, 0, 1, 0)
+    HexBox.BackgroundTransparency = 1
+    HexBox.Text = "#FFFFFF"
+    HexBox.TextColor3 = LibraryConfig.Theme.SubText
+    HexBox.Font = Enum.Font.Gotham
+    HexBox.TextSize = 12
+
+    local function ToHex(Color)
+        local r, g, b = math.floor(Color.R*255), math.floor(Color.G*255), math.floor(Color.B*255)
+        return string.format("#%02X%02X%02X", r, g, b)
+    end
+
+    local function UpdateColor() 
         local NewColor = Color3.fromHSV(h, s, v)
         Tab[Key] = NewColor
         ColorPreview.BackgroundColor3 = NewColor
-        SVImage.BackgroundColor3 = Color3.fromHSV(h, 1, 1) -- Atualiza a cor de fundo do quadrado
-        if Call then Call(NewColor) end
+        SVImage.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
+        if not HexBox:IsFocused() then
+            HexBox.Text = ToHex(NewColor)
+        end
+        if Call then Call(NewColor) end 
     end
 
-    -- > Inputs
-    local DraggingHue, DraggingSV = false, false
-
-    -- Evento: Arrastar Hue
-    HueFrame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            DraggingHue = true
-        end
-    end)
-
-    -- Evento: Arrastar SV (Quadrado)
-    SVImage.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            DraggingSV = true
-        end
-    end)
-
-    UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            DraggingHue = false
-            DraggingSV = false
-        end
-    end)
-
-    UserInputService.InputChanged:Connect(function(input)
-        if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            if DraggingHue then
-                local RelativeX = math.clamp((input.Position.X - HueFrame.AbsolutePosition.X) / HueFrame.AbsoluteSize.X, 0, 1)
-                h = RelativeX
-                HuePicker.Position = UDim2.new(RelativeX, 0, 0, 0)
+    -- Lógica para digitar HEX
+    HexBox.FocusLost:Connect(function(enter)
+        if enter then
+            local Success, Result = pcall(function() return Color3.fromHex(HexBox.Text) end)
+            if Success and Result then
+                h, s, v = Color3.toHSV(Result)
+                -- Atualiza posições visuais
+                SVPicker.Position = UDim2.new(s, -3, 1 - v, -3)
+                HuePicker.Position = UDim2.new(h, 0, 0, 0)
                 UpdateColor()
-            elseif DraggingSV then
-                local RelativeX = math.clamp((input.Position.X - SVImage.AbsolutePosition.X) / SVImage.AbsoluteSize.X, 0, 1)
-                local RelativeY = math.clamp((input.Position.Y - SVImage.AbsolutePosition.Y) / SVImage.AbsoluteSize.Y, 0, 1)
-                s = RelativeX
-                v = 1 - RelativeY
-                SVPicker.Position = UDim2.new(s, -3, RelativeY, -3)
-                UpdateColor()
+            else
+                HexBox.Text = ToHex(Tab[Key]) -- Reseta se for inválido
             end
         end
     end)
 
-    -- > Expandir / Recolher
-    local IsOpen = false
-    ToggleBtn.MouseButton1Click:Connect(function()
-        IsOpen = not IsOpen
-        ExpandContent.Visible = IsOpen -- Mostra conteúdo só quando aberto para performance
-        TweenService:Create(PickerFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-            Size = UDim2.new(0.98, 0, 0, IsOpen and 135 or 35)
-        }):Play()
-    end)
+    local DraggingHue, DraggingSV = false, false
+    HueFrame.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then DraggingHue = true end end); SVImage.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then DraggingSV = true end end)
+    UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then DraggingHue = false; DraggingSV = false end end)
+    UserInputService.InputChanged:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseMovement then 
+        if DraggingHue then h = math.clamp((i.Position.X - HueFrame.AbsolutePosition.X) / HueFrame.AbsoluteSize.X, 0, 1); HuePicker.Position = UDim2.new(h, 0, 0, 0); UpdateColor()
+        elseif DraggingSV then s = math.clamp((i.Position.X - SVImage.AbsolutePosition.X) / SVImage.AbsoluteSize.X, 0, 1); v = 1 - math.clamp((i.Position.Y - SVImage.AbsolutePosition.Y) / SVImage.AbsoluteSize.Y, 0, 1); SVPicker.Position = UDim2.new(s, -3, 1-v, -3); UpdateColor() end end end)
+    local IsOpen = false; ToggleBtn.MouseButton1Click:Connect(function() IsOpen = not IsOpen; ExpandContent.Visible = IsOpen; TweenService:Create(PickerFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(0.98, 0, 0, IsOpen and 135 or 35)}):Play() end); 
     
-    -- Configura visual inicial dos pickers
-    HuePicker.Position = UDim2.new(h, 0, 0, 0)
+    -- Inicialização correta
     SVPicker.Position = UDim2.new(s, -3, 1 - v, -3)
+    HuePicker.Position = UDim2.new(h, 0, 0, 0)
     UpdateColor()
 end
 
