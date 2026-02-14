@@ -699,8 +699,18 @@ function Library:Button(P, T, C)
     b.LayoutOrder = GetNextOrder(P)
 end
 
-function Library:Slider(P, T, Tab, Key, Min, Max)
+function Library:Slider(P, T, Tab, Key, Min, Max, Increment)
     Tab = Tab or {} 
+    Increment = Increment or 0.1 -- Padrão SEMPRE 0.1 (suporta decimais)
+    
+    -- Calcula casas decimais baseado no incremento
+    local DecimalPlaces = 1 -- Sempre mostra pelo menos 1 casa decimal
+    if Increment < 1 then
+        local str = tostring(Increment)
+        if str:find("%.") then
+            DecimalPlaces = #str - str:find("%.") 
+        end
+    end
     
     local f = Instance.new("Frame", P)
     f.Size = UDim2.new(0.98, 0, 0, 45)
@@ -731,7 +741,9 @@ function Library:Slider(P, T, Tab, Key, Min, Max)
         local v = Tab[Key] or Min 
         local p = (v - Min) / (Max - Min)
         fill.Size = UDim2.new(p, 0, 1, 0)
-        l.Text = T .. ": " .. v 
+        
+        -- SEMPRE formata com decimais
+        l.Text = string.format("%s: %." .. DecimalPlaces .. "f", T, v)
     end
     Up()
     
@@ -741,7 +753,14 @@ function Library:Slider(P, T, Tab, Key, Min, Max)
     UserInputService.InputChanged:Connect(function(i) 
         if drag and i.UserInputType == Enum.UserInputType.MouseMovement then 
             local p = math.clamp((i.Position.X - b.AbsolutePosition.X) / b.AbsoluteSize.X, 0, 1)
-            Tab[Key] = math.floor(Min + ((Max - Min) * p))
+            local rawValue = Min + ((Max - Min) * p)
+            
+            -- Arredonda baseado no incremento
+            Tab[Key] = math.floor(rawValue / Increment + 0.5) * Increment
+            
+            -- Garante que está dentro dos limites
+            Tab[Key] = math.clamp(Tab[Key], Min, Max)
+            
             Up() 
         end 
     end)
