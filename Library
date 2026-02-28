@@ -5,6 +5,8 @@ local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
+local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+
 -- [SISTEMA DE ARQUIVOS] --
 -- Verifica e cria a pasta de configs ao iniciar
 local ConfigFolderName = "AlphaxConfigs"
@@ -179,7 +181,9 @@ function Library:KeySystem(Settings)
     KeyFrame.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end end)
     UserInputService.InputChanged:Connect(function(input) if input == dragInput and dragging then update(input) end end)
 
-    TweenService:Create(KeyFrame, TweenInfo.new(0.6, Enum.EasingStyle.Back), {Size = UDim2.new(0, 400, 0, 250)}):Play()
+    local keySizeX = isMobile and 320 or 400
+    local keySizeY = isMobile and 200 or 250
+    TweenService:Create(KeyFrame, TweenInfo.new(0.6, Enum.EasingStyle.Back), {Size = UDim2.new(0, keySizeX, 0, keySizeY)}):Play()
     
     local Title = Instance.new("TextLabel", KeyFrame)
     Title.Text = Settings.Title or "Key System"
@@ -296,7 +300,9 @@ function Library:Window(TitleText, SubTitleText)
     UI_Elements.MainFrame = Main 
 
     -- Tamanho padrão da UI
-    local DefaultSize = UDim2.new(0, 580, 0, 500)
+    local mainSizeX = isMobile and 450 or 580
+    local mainSizeY = isMobile and 320 or 500
+    local DefaultSize = UDim2.new(0, mainSizeX, 0, mainSizeY)
     TweenService:Create(Main, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = DefaultSize}):Play()
     
     local Top = Instance.new("Frame", Main)
@@ -422,7 +428,7 @@ function Library:Window(TitleText, SubTitleText)
         end
     end)
     
-    local SidebarWidth = 140
+    local SidebarWidth = isMobile and 110 or 140
     local SidebarPadding = 15
     local UserProfileHeight = 60
 
