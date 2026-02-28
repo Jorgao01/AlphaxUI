@@ -4,7 +4,6 @@ local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-
 local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 
 -- [SISTEMA DE ARQUIVOS] --
@@ -438,7 +437,7 @@ function Library:Window(TitleText, SubTitleText)
     TabsC.Position = UDim2.new(0, SidebarPadding, 0, 45) 
     TabsC.BackgroundColor3 = LibraryConfig.Theme.Container
     
-    TabsC.ScrollBarThickness = 2 
+    TabsC.ScrollBarThickness = isMobile and 6 or 2 
     TabsC.ScrollBarImageColor3 = LibraryConfig.Theme.Accent 
     TabsC.AutomaticCanvasSize = Enum.AutomaticSize.Y 
     TabsC.CanvasSize = UDim2.new(0,0,0,0) 
@@ -547,7 +546,7 @@ function Library:Tab(Name, IsDevOnly)
     P.Size = UDim2.new(1, 0, 1, 0)
     P.BackgroundTransparency = 1
     P.Visible = false
-    P.ScrollBarThickness = 2
+    P.ScrollBarThickness = isMobile and 6 or 2
     
     local LL = Instance.new("UIListLayout", P)
     LL.Padding = UDim.new(0, 6)
@@ -938,7 +937,7 @@ function Library:Dropdown(P, T, Opts, Tab, Key)
     
     l.Size = UDim2.new(1, -35, 0, 35); l.Position = UDim2.new(0, 10, 0, 0); l.BackgroundTransparency = 1; l.TextColor3 = LibraryConfig.Theme.Text; l.Font = Enum.Font.Gotham; l.TextSize = 12; l.TextXAlignment = Enum.TextXAlignment.Left
     
-    local lst = Instance.new("ScrollingFrame", f); lst.Size = UDim2.new(1, 0, 0, 150); lst.Position = UDim2.new(0, 0, 0, 35); lst.BackgroundColor3 = Color3.fromRGB(35, 35, 40); lst.ScrollBarThickness = 4; lst.BorderSizePixel = 0
+    local lst = Instance.new("ScrollingFrame", f); lst.Size = UDim2.new(1, 0, 0, 150); lst.Position = UDim2.new(0, 0, 0, 35); lst.BackgroundColor3 = Color3.fromRGB(35, 35, 40); lst.ScrollBarThickness = isMobile and 8 or 4; lst.BorderSizePixel = 0
     Instance.new("UIListLayout", lst).SortOrder = Enum.SortOrder.LayoutOrder
     
     local function UpdateList(NewOpts)
@@ -1002,7 +1001,37 @@ table.insert(Connections, UserInputService.InputBegan:Connect(function(input, pr
     end
 end))
 
+
+if isMobile then
+    local MobileScreen = Instance.new("ScreenGui")
+    MobileScreen.Name = "Alphax_Mobile_Toggle"
+    MobileScreen.ResetOnSpawn = false
+    MobileScreen.IgnoreGuiInset = true
+    if syn and syn.protect_gui and not gethui then syn.protect_gui(MobileScreen) end
+    MobileScreen.Parent = ParentObj
+
+    local OpenBtn = Instance.new("TextButton")
+    OpenBtn.Size = UDim2.new(0, 45, 0, 45)
+    OpenBtn.Position = UDim2.new(0.5, -22, 0, 15)
+    OpenBtn.BackgroundColor3 = LibraryConfig.Theme.Main or Color3.fromRGB(25, 25, 25)
+    OpenBtn.TextColor3 = LibraryConfig.Theme.Accent or Color3.fromRGB(255, 255, 255)
+    OpenBtn.Text = "Menu"
+    OpenBtn.Font = Enum.Font.GothamBold
+    OpenBtn.TextSize = 12
+    OpenBtn.Parent = MobileScreen
+
+    Instance.new("UICorner", OpenBtn).CornerRadius = UDim.new(1, 0)
+    Instance.new("UIStroke", OpenBtn).Color = LibraryConfig.Theme.Outline or Color3.fromRGB(50, 50, 50)
+
+    OpenBtn.MouseButton1Click:Connect(function()
+        if UI_Elements.MainFrame then
+            UI_Elements.MainFrame.Visible = not UI_Elements.MainFrame.Visible
+        end
+    end)
+end
+
 -- Expondo config no final (caso precise)
+
 Library.Config = LibraryConfig
 
 return Library
