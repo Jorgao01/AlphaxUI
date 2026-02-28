@@ -345,6 +345,7 @@ function Library:Window(TitleText, SubTitleText)
     -- [[ BOTÃO FECHAR (X) ]] --
     local Close = Instance.new("TextButton", Top)
     Close.Name = "CloseBtn"
+    if isMobile then Close.Visible = false end
     Close.Text = "X"
     Close.Size = UDim2.new(0, 45, 1, 0)
     Close.Position = UDim2.new(1, -45, 0, 0)
@@ -361,6 +362,7 @@ function Library:Window(TitleText, SubTitleText)
     -- [[ BOTÃO MAXIMIZAR (Quadrado) ]] --
     local Maximize = Instance.new("TextButton", Top)
     Maximize.Name = "MaxBtn"
+    if isMobile then Maximize.Visible = false end
     Maximize.Text = "□" -- Ícone simples de quadrado
     Maximize.Size = UDim2.new(0, 45, 1, 0)
     Maximize.Position = UDim2.new(1, -90, 0, 0) -- Ao lado do fechar
@@ -398,6 +400,7 @@ function Library:Window(TitleText, SubTitleText)
     -- [[ BOTÃO MINIMIZAR (Traço) ]] --
     local Minimize = Instance.new("TextButton", Top)
     Minimize.Name = "MinBtn"
+    if isMobile then Minimize.Visible = false end
     Minimize.Text = "-"
     Minimize.Size = UDim2.new(0, 45, 1, 0)
     Minimize.Position = UDim2.new(1, -135, 0, 0) -- Ao lado do maximizar
