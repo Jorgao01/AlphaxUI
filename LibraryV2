@@ -2749,8 +2749,10 @@ function Window:OpenChangelog()
 		closeStroke.Transparency = 0.34
 	end)
 
+	-- O Changelog fecha SOMENTE pelo botão X.
+	-- O shade continua capturando o input para bloquear a UI atrás,
+	-- mas clicar fora não fecha o painel.
 	closeButton.MouseButton1Click:Connect(closePanel)
-	shade.MouseButton1Click:Connect(closePanel)
 
 	tween(shade, 0.22, {BackgroundTransparency = 0.40})
 
@@ -5862,6 +5864,59 @@ function Section:AddSlider(options)
 
 	addCorner(knob, 10)
 	local knobStroke = addStroke(knob, theme.Accent, 0.05, 2)
+
+	-- Hover da "bola" do slider.
+	-- O tamanho visual aumenta, o glow fica mais presente e volta
+	-- suavemente ao normal quando o mouse sai.
+	local knobScale = create("UIScale", {
+		Scale = 1,
+		Parent = knob,
+	})
+
+	local knobGlowScale = create("UIScale", {
+		Scale = 1,
+		Parent = knobGlow,
+	})
+
+	local knobHovered = false
+
+	local function setKnobHover(state)
+		knobHovered = state == true
+
+		tween(
+			knobScale,
+			knobHovered and 0.16 or 0.18,
+			{
+				Scale = knobHovered and 1.28 or 1,
+			},
+			knobHovered
+				and Enum.EasingStyle.Back
+				or Enum.EasingStyle.Quint
+		)
+
+		tween(
+			knobGlowScale,
+			0.18,
+			{
+				Scale = knobHovered and 1.20 or 1,
+			},
+			Enum.EasingStyle.Quint
+		)
+
+		tween(knobGlow, 0.18, {
+			BackgroundTransparency = knobHovered and 0.52 or 0.72,
+		})
+
+		knobStroke.Transparency = knobHovered and 0 or 0.05
+	end
+
+	self.Window.Maid:Give(knob.MouseEnter:Connect(function()
+		setKnobHover(true)
+	end))
+
+	self.Window.Maid:Give(knob.MouseLeave:Connect(function()
+		setKnobHover(false)
+	end))
 
 	self.Window:BindAccent(function(accent)
 		fill.BackgroundColor3 = accent
