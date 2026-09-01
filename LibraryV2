@@ -93,6 +93,78 @@ local Themes = {
 		Warning = Color3.fromRGB(247, 187, 86),
 		Danger = Color3.fromRGB(244, 77, 105),
 	},
+	Sunset = {
+		Background = Color3.fromRGB(20, 10, 18),
+		Topbar = Color3.fromRGB(31, 15, 27),
+		Sidebar = Color3.fromRGB(26, 12, 23),
+		Surface = Color3.fromRGB(34, 17, 31),
+		Surface2 = Color3.fromRGB(45, 22, 39),
+		Surface3 = Color3.fromRGB(57, 27, 47),
+		Surface4 = Color3.fromRGB(69, 33, 54),
+
+		Stroke = Color3.fromRGB(105, 58, 87),
+		StrokeSoft = Color3.fromRGB(72, 38, 61),
+
+		Text = Color3.fromRGB(255, 246, 249),
+		Muted = Color3.fromRGB(205, 158, 181),
+		Faint = Color3.fromRGB(155, 107, 132),
+
+		Accent = Color3.fromRGB(255, 111, 76),
+		Accent2 = Color3.fromRGB(255, 178, 92),
+
+		Success = Color3.fromRGB(85, 212, 147),
+		Warning = Color3.fromRGB(255, 197, 92),
+		Danger = Color3.fromRGB(245, 77, 102),
+	},
+
+	Emerald = {
+		Background = Color3.fromRGB(7, 15, 14),
+		Topbar = Color3.fromRGB(10, 24, 22),
+		Sidebar = Color3.fromRGB(8, 20, 18),
+		Surface = Color3.fromRGB(11, 28, 25),
+		Surface2 = Color3.fromRGB(15, 38, 33),
+		Surface3 = Color3.fromRGB(20, 49, 42),
+		Surface4 = Color3.fromRGB(27, 61, 51),
+
+		Stroke = Color3.fromRGB(49, 91, 78),
+		StrokeSoft = Color3.fromRGB(31, 65, 56),
+
+		Text = Color3.fromRGB(241, 255, 250),
+		Muted = Color3.fromRGB(144, 190, 173),
+		Faint = Color3.fromRGB(94, 143, 126),
+
+		Accent = Color3.fromRGB(37, 214, 148),
+		Accent2 = Color3.fromRGB(103, 244, 194),
+
+		Success = Color3.fromRGB(71, 220, 151),
+		Warning = Color3.fromRGB(246, 193, 84),
+		Danger = Color3.fromRGB(239, 82, 108),
+	},
+
+	Arctic = {
+		Background = Color3.fromRGB(8, 13, 20),
+		Topbar = Color3.fromRGB(12, 22, 34),
+		Sidebar = Color3.fromRGB(10, 18, 29),
+		Surface = Color3.fromRGB(14, 28, 43),
+		Surface2 = Color3.fromRGB(19, 38, 56),
+		Surface3 = Color3.fromRGB(25, 49, 70),
+		Surface4 = Color3.fromRGB(32, 61, 84),
+
+		Stroke = Color3.fromRGB(61, 95, 119),
+		StrokeSoft = Color3.fromRGB(39, 70, 91),
+
+		Text = Color3.fromRGB(243, 250, 255),
+		Muted = Color3.fromRGB(154, 187, 207),
+		Faint = Color3.fromRGB(103, 146, 173),
+
+		Accent = Color3.fromRGB(86, 181, 255),
+		Accent2 = Color3.fromRGB(145, 217, 255),
+
+		Success = Color3.fromRGB(79, 217, 158),
+		Warning = Color3.fromRGB(255, 195, 87),
+		Danger = Color3.fromRGB(245, 88, 113),
+	},
+
 }
 
 --// ============================================================
@@ -730,6 +802,30 @@ end
 --// PUBLIC ROOT API
 --// ============================================================
 
+function AlphaxUI:RegisterTheme(name, data)
+	if type(name) ~= "string" or name == "" then
+		return false, "Nome de tema inválido."
+	end
+
+	if type(data) ~= "table" then
+		return false, "Tema precisa ser uma tabela."
+	end
+
+	-- Usa Midnight como base, então o dev pode sobrescrever só o que quiser.
+	Themes[name] = mergeTable(Themes.Midnight, data)
+	return true
+end
+
+function AlphaxUI:GetTheme(name)
+	local theme = Themes[name]
+
+	if not theme then
+		return nil
+	end
+
+	return cloneTable(theme)
+end
+
 function AlphaxUI:GetVersion()
 	return VERSION
 end
@@ -754,11 +850,32 @@ function AlphaxUI:CreateWindow(options)
 	local baseTheme = Themes[themeName] or Themes.Midnight
 	local theme = mergeTable(baseTheme, options.ThemeOverrides)
 
+	if typeof(options.Accent) == "Color3" then
+		theme.Accent = options.Accent
+	end
+
+	if typeof(options.Accent2) == "Color3" then
+		theme.Accent2 = options.Accent2
+	end
+
 	local self = setmetatable({}, Window)
 
 	self.Theme = theme
 	self.ThemeName = themeName
 	self.Maid = Maid.new()
+
+	-- Customização pública da janela.
+	self.Options = options
+	self.AnimationSpeed = math.clamp(tonumber(options.AnimationSpeed) or 1, 0.35, 3)
+	self.InterfaceScale = math.clamp(tonumber(options.Scale) or 1, 0.65, 1.45)
+	self.CornerRadius = math.clamp(tonumber(options.CornerRadius) or 28, 14, 44)
+	self.CardRadius = math.clamp(tonumber(options.CardRadius) or 17, 8, 30)
+	self.SidebarWidth = math.clamp(tonumber(options.SidebarWidth) or 244, 190, 340)
+	self.MobileBreakpoint = math.clamp(tonumber(options.MobileBreakpoint) or 760, 480, 1100)
+	self.LoadingEnabled = options.Loading ~= false
+	self.LoadingDuration = math.clamp(tonumber(options.LoadingDuration) or 1.15, 0.45, 4)
+	self.LoadingTitle = tostring(options.LoadingTitle or options.Title or "Alphax")
+	self.LoadingSubtitle = tostring(options.LoadingSubtitle or "Preparando interface...")
 
 	self.Tabs = {}
 	self.Controls = {}
@@ -866,7 +983,7 @@ function AlphaxUI:CreateWindow(options)
 		Parent = chrome,
 	})
 
-	addCorner(glow, 32)
+	addCorner(glow, self.CornerRadius + 4)
 
 	local glowStroke = addStroke(glow, theme.Accent, 0.58, 2)
 	self:BindAccent(function(accent)
@@ -885,7 +1002,7 @@ function AlphaxUI:CreateWindow(options)
 	})
 
 	self.Root = root
-	addCorner(root, 28)
+	addCorner(root, self.CornerRadius)
 
 	local rootStroke = addStroke(root, theme.Stroke, 0.08, 1)
 
@@ -899,7 +1016,7 @@ function AlphaxUI:CreateWindow(options)
 		Parent = root,
 	})
 
-	addCorner(innerRoundedBorder, 24)
+	addCorner(innerRoundedBorder, math.max(10, self.CornerRadius - 4))
 	local innerStroke = addStroke(innerRoundedBorder, theme.Accent, 0.68, 1)
 
 	self:BindAccent(function(accent)
@@ -1195,7 +1312,7 @@ function AlphaxUI:CreateWindow(options)
 	local sidebar = create("Frame", {
 		Name = "Sidebar",
 		Position = UDim2.fromOffset(5, 4),
-		Size = UDim2.new(0, 244, 1, -9),
+		Size = UDim2.new(0, self.SidebarWidth, 1, -9),
 		BackgroundColor3 = theme.Sidebar,
 		BorderSizePixel = 0,
 		ZIndex = 20,
@@ -1338,8 +1455,8 @@ function AlphaxUI:CreateWindow(options)
 	-- Content
 	local content = create("Frame", {
 		Name = "Content",
-		Position = UDim2.fromOffset(255, 0),
-		Size = UDim2.new(1, -255, 1, 0),
+		Position = UDim2.fromOffset(self.SidebarWidth + 11, 0),
+		Size = UDim2.new(1, -(self.SidebarWidth + 11), 1, 0),
 		BackgroundTransparency = 1,
 		ZIndex = 3,
 		Parent = body,
@@ -1491,7 +1608,7 @@ function AlphaxUI:CreateWindow(options)
 			local viewport = camera.ViewportSize
 			local isMobile =
 				UserInputService.TouchEnabled
-				or viewport.X <= 760
+				or viewport.X <= self.MobileBreakpoint
 				or viewport.Y <= 500
 
 			self.MobileMode = isMobile
@@ -1596,10 +1713,10 @@ function AlphaxUI:CreateWindow(options)
 				body.Size = UDim2.new(1, 0, 1, -78)
 
 				sidebar.Position = UDim2.fromOffset(5, 4)
-				sidebar.Size = UDim2.new(0, 244, 1, -9)
+				sidebar.Size = UDim2.new(0, self.SidebarWidth, 1, -9)
 
-				content.Position = UDim2.fromOffset(255, 0)
-				content.Size = UDim2.new(1, -255, 1, 0)
+				content.Position = UDim2.fromOffset(self.SidebarWidth + 11, 0)
+				content.Size = UDim2.new(1, -(self.SidebarWidth + 11), 1, 0)
 
 				header.Position = UDim2.fromOffset(32, 22)
 				header.Size = UDim2.new(1, -64, 0, 72)
@@ -1636,51 +1753,66 @@ function AlphaxUI:CreateWindow(options)
 		self.Maid:Give(camera:GetPropertyChangedSignal("ViewportSize"):Connect(updateResponsive))
 	end
 
-	-- Opening animation.
+	-- Opening animation / loading intro.
 	local originalPosition = chrome.Position
 
 	local windowScale = create("UIScale", {
-		Scale = 0.965,
+		Scale = self.InterfaceScale,
 		Parent = chrome,
 	})
 
 	self.WindowScale = windowScale
 
-	chrome.Position = UDim2.new(
-		originalPosition.X.Scale,
-		originalPosition.X.Offset,
-		originalPosition.Y.Scale,
-		originalPosition.Y.Offset + 14
-	)
+	if self.LoadingEnabled then
+		root.GroupTransparency = 0
+		chrome.Position = clampWindowPosition(
+			chrome,
+			originalPosition,
+			chrome.Size,
+			10
+		)
 
-	root.GroupTransparency = 1
+		task.defer(function()
+			self:_PlayLoadingAnimation()
+		end)
+	else
+		chrome.Position = UDim2.new(
+			originalPosition.X.Scale,
+			originalPosition.X.Offset,
+			originalPosition.Y.Scale,
+			originalPosition.Y.Offset + 14
+		)
 
-	tween(
-		chrome,
-		0.28,
-		{
-			Position = clampWindowPosition(
-				chrome,
-				originalPosition,
-				chrome.Size,
-				10
-			),
-		},
-		Enum.EasingStyle.Quint
-	)
+		root.GroupTransparency = 1
+		windowScale.Scale = 0.965 * self.InterfaceScale
 
-	tween(
-		windowScale,
-		0.34,
-		{
-			Scale = 1,
-		},
-		Enum.EasingStyle.Back
-	)
+		tween(
+			chrome,
+			0.28 * self.AnimationSpeed,
+			{
+				Position = clampWindowPosition(
+					chrome,
+					originalPosition,
+					chrome.Size,
+					10
+				),
+			},
+			Enum.EasingStyle.Quint
+		)
 
-	tween(root, 0.24, {
-		GroupTransparency = 0,
-	})
+		tween(
+			windowScale,
+			0.34 * self.AnimationSpeed,
+			{
+				Scale = self.InterfaceScale,
+			},
+			Enum.EasingStyle.Back
+		)
+
+		tween(root, 0.24 * self.AnimationSpeed, {
+			GroupTransparency = 0,
+		})
+	end
 
 	return self
 end
@@ -1693,6 +1825,57 @@ function Window:BindAccent(callback)
 	end)
 
 	return callback
+end
+
+function Window:SetScale(scale)
+	scale = tonumber(scale)
+
+	if not scale then
+		return false
+	end
+
+	self.InterfaceScale = math.clamp(scale, 0.65, 1.45)
+
+	if self.WindowScale then
+		tween(
+			self.WindowScale,
+			0.22,
+			{Scale = self.InterfaceScale},
+			Enum.EasingStyle.Quint
+		)
+	end
+
+	return true
+end
+
+function Window:GetScale()
+	return self.InterfaceScale
+end
+
+function Window:SetBranding(data)
+	if type(data) ~= "table" then
+		return false
+	end
+
+	if data.Title ~= nil then
+		self.TitleLabel.Text = tostring(data.Title)
+	end
+
+	if data.Subtitle ~= nil then
+		self.SubtitleLabel.Text = tostring(data.Subtitle)
+	end
+
+	return true
+end
+
+function Window:SetLoadingText(title, subtitle)
+	if title ~= nil then
+		self.LoadingTitle = tostring(title)
+	end
+
+	if subtitle ~= nil then
+		self.LoadingSubtitle = tostring(subtitle)
+	end
 end
 
 function Window:SetAccent(color)
@@ -1729,6 +1912,312 @@ function Window:SetToggleKey(keyCode)
 		return true
 	end
 	return false
+end
+
+function Window:_PlayLoadingAnimation()
+	if not self.LoadingEnabled or self.Destroyed then
+		return
+	end
+
+	local theme = self.Theme
+	local screen = self.Gui
+
+	-- Esconde a UI principal até a animação terminar.
+	self.Chrome.Visible = false
+
+	local loader = create("CanvasGroup", {
+		Name = "AlphaxLoader",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		GroupTransparency = 1,
+		ZIndex = 500,
+		Parent = screen,
+	})
+
+	local cardWidth = 360
+	local camera = workspace.CurrentCamera
+	local viewport = camera and camera.ViewportSize or Vector2.new(800, 600)
+	cardWidth = math.min(cardWidth, math.max(286, viewport.X - 32))
+
+	local card = create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, 14),
+		Size = UDim2.fromOffset(cardWidth, 168),
+		BackgroundColor3 = theme.Surface,
+		BorderSizePixel = 0,
+		ZIndex = 501,
+		Parent = loader,
+	})
+	addCorner(card, 22)
+	addStroke(card, theme.Stroke, 0.18, 1)
+
+	local scale = create("UIScale", {
+		Scale = 0.88,
+		Parent = card,
+	})
+
+	local glow = create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromOffset(58, 57),
+		Size = UDim2.fromOffset(64, 64),
+		BackgroundColor3 = theme.Accent,
+		BackgroundTransparency = 0.84,
+		BorderSizePixel = 0,
+		ZIndex = 501,
+		Parent = card,
+	})
+	addCorner(glow, 32)
+
+	local logo = create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromOffset(58, 57),
+		Size = UDim2.fromOffset(46, 46),
+		BackgroundColor3 = theme.Accent,
+		BorderSizePixel = 0,
+		ZIndex = 502,
+		Parent = card,
+	})
+	addCorner(logo, 14)
+	addGradient(logo, theme.Accent2, theme.Accent, 135)
+	addStroke(logo, Color3.new(1, 1, 1), 0.62, 1)
+
+	create("TextLabel", {
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+		Font = Enum.Font.GothamBold,
+		Text = tostring(self.Options.LogoText or "A"),
+		TextColor3 = Color3.new(1, 1, 1),
+		TextSize = 18,
+		ZIndex = 503,
+		Parent = logo,
+	})
+
+	local title = create("TextLabel", {
+		Position = UDim2.fromOffset(94, 33),
+		Size = UDim2.new(1, -112, 0, 26),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.GothamBold,
+		Text = self.LoadingTitle,
+		TextColor3 = theme.Text,
+		TextSize = 17,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		ZIndex = 502,
+		Parent = card,
+	})
+
+	local subtitle = create("TextLabel", {
+		Position = UDim2.fromOffset(94, 61),
+		Size = UDim2.new(1, -112, 0, 18),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.Gotham,
+		Text = self.LoadingSubtitle,
+		TextColor3 = theme.Muted,
+		TextSize = 10,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		ZIndex = 502,
+		Parent = card,
+	})
+
+	local progressBack = create("Frame", {
+		Position = UDim2.fromOffset(22, 112),
+		Size = UDim2.new(1, -44, 0, 8),
+		BackgroundColor3 = theme.Surface4,
+		BorderSizePixel = 0,
+		ZIndex = 502,
+		Parent = card,
+	})
+	addCorner(progressBack, 4)
+
+	local progress = create("Frame", {
+		Size = UDim2.new(0, 0, 1, 0),
+		BackgroundColor3 = theme.Accent,
+		BorderSizePixel = 0,
+		ZIndex = 503,
+		Parent = progressBack,
+	})
+	addCorner(progress, 4)
+	addGradient(progress, theme.Accent2, theme.Accent, 0)
+
+	local status = create("TextLabel", {
+		Position = UDim2.fromOffset(22, 129),
+		Size = UDim2.new(1, -44, 0, 18),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.GothamMedium,
+		Text = "0%",
+		TextColor3 = theme.Faint,
+		TextSize = 9,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		ZIndex = 502,
+		Parent = card,
+	})
+
+	local spinHost = create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(1, -30, 0, 26),
+		Size = UDim2.fromOffset(18, 18),
+		BackgroundTransparency = 1,
+		ZIndex = 502,
+		Parent = card,
+	})
+
+	local spinner = create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(14, 14),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ZIndex = 503,
+		Parent = spinHost,
+	})
+	addCorner(spinner, 7)
+
+	local spinStroke = addStroke(spinner, theme.Accent, 0.08, 2)
+
+	-- Um pequeno segmento escondido deixa o spinner visualmente assimétrico.
+	local mask = create("Frame", {
+		Position = UDim2.fromOffset(-2, -2),
+		Size = UDim2.fromOffset(9, 7),
+		BackgroundColor3 = theme.Surface,
+		BorderSizePixel = 0,
+		ZIndex = 504,
+		Parent = spinHost,
+	})
+	addCorner(mask, 3)
+
+	tween(loader, 0.18 * self.AnimationSpeed, {
+		GroupTransparency = 0,
+	})
+
+	tween(
+		card,
+		0.28 * self.AnimationSpeed,
+		{Position = UDim2.fromScale(0.5, 0.5)},
+		Enum.EasingStyle.Quint
+	)
+
+	tween(
+		scale,
+		0.34 * self.AnimationSpeed,
+		{Scale = 1},
+		Enum.EasingStyle.Back
+	)
+
+	local started = os.clock()
+	local duration = self.LoadingDuration
+	local connection
+
+	connection = game:GetService("RunService").RenderStepped:Connect(function()
+		if not loader.Parent then
+			if connection then
+				connection:Disconnect()
+			end
+			return
+		end
+
+		local elapsed = os.clock() - started
+		local alpha = math.clamp(elapsed / duration, 0, 1)
+
+		-- Ease progress so it looks less mechanical.
+		local eased = 1 - ((1 - alpha) ^ 3)
+
+		progress.Size = UDim2.new(eased, 0, 1, 0)
+		status.Text = tostring(math.floor(eased * 100 + 0.5)) .. "%"
+		spinHost.Rotation = (spinHost.Rotation + 220 * (1 / 60)) % 360
+
+		if alpha >= 1 then
+			connection:Disconnect()
+
+			status.Text = "Pronto"
+			subtitle.Text = tostring(self.Options.LoadingDoneText or "Interface carregada")
+
+			task.delay(0.10, function()
+				if not loader.Parent or self.Destroyed then
+					return
+				end
+
+				tween(
+					scale,
+					0.22 * self.AnimationSpeed,
+					{Scale = 0.92},
+					Enum.EasingStyle.Back,
+					Enum.EasingDirection.In
+				)
+
+				tween(
+					card,
+					0.22 * self.AnimationSpeed,
+					{
+						Position = UDim2.new(0.5, 0, 0.5, -10),
+					},
+					Enum.EasingStyle.Quint,
+					Enum.EasingDirection.In
+				)
+
+				tween(loader, 0.24 * self.AnimationSpeed, {
+					GroupTransparency = 1,
+				})
+
+				task.delay(0.25 * self.AnimationSpeed, function()
+					if loader and loader.Parent then
+						loader:Destroy()
+					end
+
+					if self.Destroyed then
+						return
+					end
+
+					self.Chrome.Visible = true
+
+					-- Reusa a animação padrão da janela.
+					local safePosition = clampWindowPosition(
+						self.Chrome,
+						self.Chrome.Position,
+						self.Chrome.Size,
+						self.MobileMode and 6 or 10
+					)
+
+					self.Chrome.Position = UDim2.new(
+						safePosition.X.Scale,
+						safePosition.X.Offset,
+						safePosition.Y.Scale,
+						safePosition.Y.Offset + 12
+					)
+
+					if self.Root and self.Root:IsA("CanvasGroup") then
+						self.Root.GroupTransparency = 1
+					end
+
+					if self.WindowScale then
+						self.WindowScale.Scale = 0.92 * self.InterfaceScale
+					end
+
+					tween(
+						self.Chrome,
+						0.30 * self.AnimationSpeed,
+						{Position = safePosition},
+						Enum.EasingStyle.Quint
+					)
+
+					if self.WindowScale then
+						tween(
+							self.WindowScale,
+							0.36 * self.AnimationSpeed,
+							{Scale = self.InterfaceScale},
+							Enum.EasingStyle.Back
+						)
+					end
+
+					if self.Root and self.Root:IsA("CanvasGroup") then
+						tween(self.Root, 0.26 * self.AnimationSpeed, {
+							GroupTransparency = 0,
+						})
+					end
+				end)
+			end)
+		end
+	end)
 end
 
 function Window:SetMobileSidebar(state)
@@ -1882,7 +2371,7 @@ function Window:SetMinimized(state)
 			self.WindowScale,
 			0.20,
 			{
-				Scale = self.Minimized and 0.992 or 1,
+				Scale = (self.Minimized and 0.992 or 1) * self.InterfaceScale,
 			},
 			Enum.EasingStyle.Quint
 		)
@@ -1958,7 +2447,7 @@ function Window:SetVisible(state, force)
 		end
 
 		if scale then
-			scale.Scale = 0.92
+			scale.Scale = 0.92 * self.InterfaceScale
 		end
 
 		if dim then
@@ -1981,7 +2470,7 @@ function Window:SetVisible(state, force)
 			tween(
 				scale,
 				0.36,
-				{Scale = 1},
+				{Scale = self.InterfaceScale},
 				Enum.EasingStyle.Back
 			)
 		end
@@ -2021,7 +2510,7 @@ function Window:SetVisible(state, force)
 			tween(
 				scale,
 				0.27,
-				{Scale = 0.92},
+				{Scale = 0.92 * self.InterfaceScale},
 				Enum.EasingStyle.Back,
 				Enum.EasingDirection.In
 			)
@@ -2124,7 +2613,7 @@ function Window:Close()
 		tween(
 			scale,
 			0.30,
-			{Scale = 0.82},
+			{Scale = 0.82 * self.InterfaceScale},
 			Enum.EasingStyle.Back,
 			Enum.EasingDirection.In
 		)
@@ -3480,7 +3969,7 @@ function Section:_CreateRow(height, searchableText)
 		Parent = self.Frame,
 	})
 
-	addCorner(row, 17)
+	addCorner(row, self.Window.CardRadius)
 
 	local rowStroke = addStroke(
 		row,
@@ -5571,6 +6060,16 @@ function AlphaxUI:GetBuildInfo()
 		Version = VERSION,
 		Channel = "stable",
 		Target = "executor",
+		Themes = self:GetThemes(),
+		Features = {
+			"AnimatedLoading",
+			"HSVColorPicker",
+			"MobileDrawer",
+			"CustomThemes",
+			"RuntimeScale",
+			"CustomBranding",
+			"ConfigurableKeybind",
+		},
 	}
 end
 
