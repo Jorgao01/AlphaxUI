@@ -6248,22 +6248,47 @@ function Section:AddDropdown(options)
 	local description = options.Description or ""
 	local values = options.Options or {}
 	local selected = options.Default
+	local isOpen = false
 
 	if selected == nil and #values > 0 then
 		selected = values[1]
 	end
 
+	local baseHeight = description ~= "" and 78 or 64
+	local itemHeight = 34
+	local itemGap = 5
+	local maxVisible = math.max(1, tonumber(options.MaxVisible) or 6)
+
+	local function calculatePanelHeight()
+		local visible = math.min(#values, maxVisible)
+
+		if visible <= 0 then
+			return 48
+		end
+
+		return 12
+			+ (visible * itemHeight)
+			+ (math.max(0, visible - 1) * itemGap)
+	end
+
 	local row = self:_CreateRow(
-		description ~= "" and 78 or 64,
+		baseHeight,
 		name .. " " .. description .. " " .. table.concat(values, " ")
 	)
 
-	self:_CreateTextBlock(row, name, description, UDim2.new(0.50, -12, 1, 0))
+	row.ClipsDescendants = true
+
+	local textBlock = self:_CreateTextBlock(
+		row,
+		name,
+		description,
+		UDim2.new(0.50, -12, 0, baseHeight)
+	)
 
 	local selector = create("TextButton", {
 		AutoButtonColor = false,
 		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -16, 0.5, 0),
+		Position = UDim2.new(1, -16, 0, math.floor(baseHeight / 2)),
 		Size = UDim2.new(0.45, 0, 0, 44),
 		BackgroundColor3 = theme.Surface,
 		BorderSizePixel = 0,
@@ -6275,9 +6300,10 @@ function Section:AddDropdown(options)
 	addCorner(selector, 14)
 	local selectorStroke = addStroke(selector, theme.Accent, 0.52, 1)
 
-	self.Window:BindAccent(function(accent)
-		selectorStroke.Color = accent
-	end)
+	local selectorScale = create("UIScale", {
+		Scale = 1,
+		Parent = selector,
+	})
 
 	local iconHost = create("Frame", {
 		BackgroundTransparency = 1,
@@ -6293,10 +6319,6 @@ function Section:AddDropdown(options)
 		theme.Accent,
 		11
 	)
-
-	self.Window:BindAccent(function(accent)
-		setVectorIconColor(icon, accent)
-	end)
 
 	local selectedLabel = create("TextLabel", {
 		BackgroundTransparency = 1,
@@ -6321,23 +6343,311 @@ function Section:AddDropdown(options)
 		Parent = selector,
 	})
 
-	local chevronIcon = createVectorIcon(
-		chevronHost,
-		"chevron",
-		theme.Text,
-		11
-	)
+	createVectorIcon(chevronHost, "chevron", theme.Text, 11)
 
-	local selectorScale = create("UIScale", {
-		Scale = 1,
-		Parent = selector,
+	-- Inline area: belongs to the same card and expands the row.
+	local panel = create("CanvasGroup", {
+		Name = "InlineDropdown",
+		Position = UDim2.fromOffset(16, baseHeight - 3),
+		Size = UDim2.new(1, -32, 0, calculatePanelHeight()),
+		BackgroundColor3 = theme.Surface,
+		BackgroundTransparency = 0.12,
+		BorderSizePixel = 0,
+		ClipsDescendants = true,
+		GroupTransparency = 1,
+		Visible = false,
+		ZIndex = 10,
+		Parent = row,
 	})
 
+	addCorner(panel, 14)
+	local panelStroke = addStroke(panel, theme.StrokeSoft, 0.34, 1)
+
+	local separator = create("Frame", {
+		Position = UDim2.fromOffset(12, 0),
+		Size = UDim2.new(1, -24, 0, 1),
+		BackgroundColor3 = theme.Accent,
+		BackgroundTransparency = 0.68,
+		BorderSizePixel = 0,
+		ZIndex = 11,
+		Parent = panel,
+	})
+
+	local scroll = create("ScrollingFrame", {
+		Position = UDim2.fromOffset(6, 6),
+		Size = UDim2.new(1, -12, 1, -12),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		CanvasSize = UDim2.new(),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		ScrollBarThickness = #values > maxVisible and 2 or 0,
+		ScrollBarImageColor3 = theme.Accent,
+		ScrollBarImageTransparency = 0.28,
+		ZIndex = 11,
+		Parent = panel,
+	})
+
+	create("UIListLayout", {
+		Padding = UDim.new(0, itemGap),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = scroll,
+	})
+
+	local optionButtons = {}
+	local optionConnections = {}
 	local controller = {}
+
+	local function disconnectOptions()
+		for _, connection in ipairs(optionConnections) do
+			pcall(function()
+				connection:Disconnect()
+			end)
+		end
+
+		table.clear(optionConnections)
+
+		for _, button in ipairs(optionButtons) do
+			if button and button.Parent then
+				button:Destroy()
+			end
+		end
+
+		table.clear(optionButtons)
+	end
+
+	local function updateOptionVisuals()
+		for _, button in ipairs(optionButtons) do
+			local optionValue = button:GetAttribute("OptionValue")
+			local active = optionValue == tostring(selected)
+
+			tween(button, 0.14, {
+				BackgroundColor3 = active and theme.Surface4 or theme.Surface2,
+				TextColor3 = active and theme.Text or theme.Muted,
+			})
+
+			local stroke = button:FindFirstChildOfClass("UIStroke")
+			if stroke then
+				stroke.Color = theme.Accent
+				stroke.Transparency = active and 0.30 or 1
+			end
+		end
+	end
+
+	local function closeDropdown()
+		if not isOpen then
+			return
+		end
+
+		isOpen = false
+
+		if self.Window.ActiveInlineDropdown
+			and self.Window.ActiveInlineDropdown.Row == row then
+			self.Window.ActiveInlineDropdown = nil
+		end
+
+		tween(
+			chevronHost,
+			0.22,
+			{Rotation = 0},
+			Enum.EasingStyle.Quint
+		)
+
+		tween(
+			selectorScale,
+			0.18,
+			{Scale = 1},
+			Enum.EasingStyle.Quint
+		)
+
+		selectorStroke.Transparency = 0.52
+
+		tween(
+			panel,
+			0.20,
+			{
+				Position = UDim2.fromOffset(16, baseHeight - 3),
+				GroupTransparency = 1,
+			},
+			Enum.EasingStyle.Quint,
+			Enum.EasingDirection.In
+		)
+
+		tween(
+			row,
+			0.26,
+			{Size = UDim2.new(1, 0, 0, baseHeight)},
+			Enum.EasingStyle.Quint,
+			Enum.EasingDirection.InOut
+		)
+
+		task.delay(0.22, function()
+			if not isOpen and panel and panel.Parent then
+				panel.Visible = false
+			end
+		end)
+	end
+
+	local function openDropdown()
+		if isOpen then
+			closeDropdown()
+			return
+		end
+
+		if self.Window.ActiveInlineDropdown
+			and self.Window.ActiveInlineDropdown.Close
+			and self.Window.ActiveInlineDropdown.Row ~= row then
+			self.Window.ActiveInlineDropdown.Close()
+		end
+
+		isOpen = true
+
+		self.Window.ActiveInlineDropdown = {
+			Row = row,
+			Close = closeDropdown,
+		}
+
+		local panelHeight = calculatePanelHeight()
+		local expandedHeight = baseHeight + panelHeight + 10
+
+		panel.Size = UDim2.new(1, -32, 0, panelHeight)
+		panel.Position = UDim2.fromOffset(16, baseHeight - 3)
+		panel.GroupTransparency = 1
+		panel.Visible = true
+
+		tween(
+			row,
+			0.30,
+			{Size = UDim2.new(1, 0, 0, expandedHeight)},
+			Enum.EasingStyle.Quint
+		)
+
+		tween(
+			panel,
+			0.27,
+			{
+				Position = UDim2.fromOffset(16, baseHeight + 4),
+				GroupTransparency = 0,
+			},
+			Enum.EasingStyle.Quint
+		)
+
+		tween(
+			chevronHost,
+			0.22,
+			{Rotation = 180},
+			Enum.EasingStyle.Quint
+		)
+
+		tween(
+			selectorScale,
+			0.16,
+			{Scale = 1.015},
+			Enum.EasingStyle.Quint
+		)
+
+		selectorStroke.Transparency = 0.18
+	end
+
+	local function rebuildOptions()
+		disconnectOptions()
+
+		panel.Size = UDim2.new(1, -32, 0, calculatePanelHeight())
+		scroll.ScrollBarThickness = #values > maxVisible and 2 or 0
+
+		for index, value in ipairs(values) do
+			local active = value == selected
+
+			local button = create("TextButton", {
+				LayoutOrder = index,
+				AutoButtonColor = false,
+				Size = UDim2.new(1, 0, 0, itemHeight),
+				BackgroundColor3 = active and theme.Surface4 or theme.Surface2,
+				BorderSizePixel = 0,
+				Font = Enum.Font.GothamMedium,
+				Text = tostring(value),
+				TextColor3 = active and theme.Text or theme.Muted,
+				TextSize = 10,
+				ZIndex = 12,
+				Parent = scroll,
+			})
+
+			button:SetAttribute("OptionValue", tostring(value))
+			addCorner(button, 10)
+
+			local buttonStroke = addStroke(
+				button,
+				theme.Accent,
+				active and 0.30 or 1,
+				1
+			)
+
+			local buttonScale = create("UIScale", {
+				Scale = 1,
+				Parent = button,
+			})
+
+			table.insert(optionButtons, button)
+
+			table.insert(optionConnections, button.MouseEnter:Connect(function()
+				tween(button, 0.13, {
+					BackgroundColor3 = theme.Surface4,
+					TextColor3 = theme.Text,
+				})
+
+				tween(
+					buttonScale,
+					0.13,
+					{Scale = 1.01},
+					Enum.EasingStyle.Quint
+				)
+			end))
+
+			table.insert(optionConnections, button.MouseLeave:Connect(function()
+				local nowActive = value == selected
+
+				tween(button, 0.13, {
+					BackgroundColor3 = nowActive and theme.Surface4 or theme.Surface2,
+					TextColor3 = nowActive and theme.Text or theme.Muted,
+				})
+
+				tween(
+					buttonScale,
+					0.13,
+					{Scale = 1},
+					Enum.EasingStyle.Quint
+				)
+			end))
+
+			table.insert(optionConnections, button.MouseButton1Click:Connect(function()
+				controller:Set(value, true)
+				updateOptionVisuals()
+				closeDropdown()
+			end))
+		end
+
+		if isOpen then
+			local panelHeight = calculatePanelHeight()
+
+			tween(
+				row,
+				0.24,
+				{
+					Size = UDim2.new(
+						1,
+						0,
+						0,
+						baseHeight + panelHeight + 10
+					),
+				},
+				Enum.EasingStyle.Quint
+			)
+		end
+	end
 
 	function controller:Set(value, fireCallback)
 		selected = value
 		selectedLabel.Text = tostring(value or "Selecionar")
+		updateOptionVisuals()
 
 		if fireCallback ~= false then
 			safeCallback(options.Callback, selected)
@@ -6356,72 +6666,33 @@ function Section:AddDropdown(options)
 		end
 
 		selectedLabel.Text = tostring(selected or "Selecionar")
+		rebuildOptions()
 	end
 
+	function controller:Open()
+		openDropdown()
+	end
+
+	function controller:Close()
+		closeDropdown()
+	end
+
+	function controller:IsOpen()
+		return isOpen
+	end
+
+	self.Window:BindAccent(function(accent)
+		selectorStroke.Color = accent
+		panelStroke.Color = self.Window.Theme.StrokeSoft
+		separator.BackgroundColor3 = accent
+		scroll.ScrollBarImageColor3 = accent
+		setVectorIconColor(icon, accent)
+	end)
+
+	rebuildOptions()
+
 	self.Window.Maid:Give(selector.MouseButton1Click:Connect(function()
-		local menuItems = {}
-
-		for _, value in ipairs(values) do
-			table.insert(menuItems, {
-				Text = tostring(value),
-				Value = value,
-				Selected = value == selected,
-			})
-		end
-
-		tween(
-			selectorScale,
-			0.12,
-			{Scale = 1.018},
-			Enum.EasingStyle.Quint
-		)
-
-		tween(
-			chevronHost,
-			0.20,
-			{Rotation = 180},
-			Enum.EasingStyle.Quint
-		)
-
-		selectorStroke.Transparency = 0.18
-
-		local popupData = self.Window:_OpenMenu(
-			selector,
-			menuItems,
-			function(item)
-				controller:Set(item.Value, true)
-			end,
-			{
-				Width = math.max(selector.AbsoluteSize.X, 230),
-				MaxVisible = 6,
-			}
-		)
-
-		if popupData then
-			local originalClose = popupData.CloseAnimation
-
-			popupData.CloseAnimation = function()
-				tween(
-					selectorScale,
-					0.18,
-					{Scale = 1},
-					Enum.EasingStyle.Quint
-				)
-
-				tween(
-					chevronHost,
-					0.20,
-					{Rotation = 0},
-					Enum.EasingStyle.Quint
-				)
-
-				selectorStroke.Transparency = 0.52
-
-				if originalClose then
-					originalClose()
-				end
-			end
-		end
+		openDropdown()
 	end))
 
 	self.Window:_RegisterControl(options.Id, controller)
@@ -6445,22 +6716,47 @@ function Section:AddMultiDropdown(options)
 	local description = options.Description or ""
 	local values = options.Options or {}
 	local selected = {}
+	local isOpen = false
 
 	for _, value in ipairs(options.Default or {}) do
 		selected[value] = true
 	end
 
+	local baseHeight = description ~= "" and 78 or 64
+	local itemHeight = 34
+	local itemGap = 5
+	local maxVisible = math.max(1, tonumber(options.MaxVisible) or 6)
+
+	local function calculatePanelHeight()
+		local visible = math.min(#values, maxVisible)
+
+		if visible <= 0 then
+			return 48
+		end
+
+		return 12
+			+ (visible * itemHeight)
+			+ (math.max(0, visible - 1) * itemGap)
+	end
+
 	local row = self:_CreateRow(
-		description ~= "" and 78 or 64,
+		baseHeight,
 		name .. " " .. description .. " " .. table.concat(values, " ")
 	)
 
-	self:_CreateTextBlock(row, name, description, UDim2.new(0.50, -12, 1, 0))
+	row.ClipsDescendants = true
+
+	local textBlock = self:_CreateTextBlock(
+		row,
+		name,
+		description,
+		UDim2.new(0.50, -12, 0, baseHeight)
+	)
 
 	local selector = create("TextButton", {
 		AutoButtonColor = false,
 		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -16, 0.5, 0),
+		Position = UDim2.new(1, -16, 0, math.floor(baseHeight / 2)),
 		Size = UDim2.new(0.45, 0, 0, 44),
 		BackgroundColor3 = theme.Surface,
 		BorderSizePixel = 0,
@@ -6472,9 +6768,10 @@ function Section:AddMultiDropdown(options)
 	addCorner(selector, 14)
 	local selectorStroke = addStroke(selector, theme.Accent, 0.52, 1)
 
-	self.Window:BindAccent(function(accent)
-		selectorStroke.Color = accent
-	end)
+	local selectorScale = create("UIScale", {
+		Scale = 1,
+		Parent = selector,
+	})
 
 	local selectedLabel = create("TextLabel", {
 		BackgroundTransparency = 1,
@@ -6501,11 +6798,55 @@ function Section:AddMultiDropdown(options)
 
 	createVectorIcon(chevronHost, "chevron", theme.Text, 11)
 
-	local selectorScale = create("UIScale", {
-		Scale = 1,
-		Parent = selector,
+	local panel = create("CanvasGroup", {
+		Name = "InlineMultiDropdown",
+		Position = UDim2.fromOffset(16, baseHeight - 3),
+		Size = UDim2.new(1, -32, 0, calculatePanelHeight()),
+		BackgroundColor3 = theme.Surface,
+		BackgroundTransparency = 0.12,
+		BorderSizePixel = 0,
+		ClipsDescendants = true,
+		GroupTransparency = 1,
+		Visible = false,
+		ZIndex = 10,
+		Parent = row,
 	})
 
+	addCorner(panel, 14)
+	local panelStroke = addStroke(panel, theme.StrokeSoft, 0.34, 1)
+
+	local separator = create("Frame", {
+		Position = UDim2.fromOffset(12, 0),
+		Size = UDim2.new(1, -24, 0, 1),
+		BackgroundColor3 = theme.Accent,
+		BackgroundTransparency = 0.68,
+		BorderSizePixel = 0,
+		ZIndex = 11,
+		Parent = panel,
+	})
+
+	local scroll = create("ScrollingFrame", {
+		Position = UDim2.fromOffset(6, 6),
+		Size = UDim2.new(1, -12, 1, -12),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		CanvasSize = UDim2.new(),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		ScrollBarThickness = #values > maxVisible and 2 or 0,
+		ScrollBarImageColor3 = theme.Accent,
+		ScrollBarImageTransparency = 0.28,
+		ZIndex = 11,
+		Parent = panel,
+	})
+
+	create("UIListLayout", {
+		Padding = UDim.new(0, itemGap),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = scroll,
+	})
+
+	local optionButtons = {}
+	local optionConnections = {}
 	local controller = {}
 
 	local function listSelected()
@@ -6520,7 +6861,7 @@ function Section:AddMultiDropdown(options)
 		return result
 	end
 
-	local function render()
+	local function renderLabel()
 		local current = listSelected()
 
 		if #current == 0 then
@@ -6529,6 +6870,297 @@ function Section:AddMultiDropdown(options)
 			selectedLabel.Text = table.concat(current, ", ")
 		else
 			selectedLabel.Text = tostring(#current) .. " selecionados"
+		end
+	end
+
+	local function disconnectOptions()
+		for _, connection in ipairs(optionConnections) do
+			pcall(function()
+				connection:Disconnect()
+			end)
+		end
+
+		table.clear(optionConnections)
+
+		for _, button in ipairs(optionButtons) do
+			if button and button.Parent then
+				button:Destroy()
+			end
+		end
+
+		table.clear(optionButtons)
+	end
+
+	local function styleButton(button, value)
+		local active = selected[value] == true
+
+		tween(button, 0.14, {
+			BackgroundColor3 = active and theme.Surface4 or theme.Surface2,
+		})
+
+		local label = button:FindFirstChild("Label")
+		if label then
+			label.TextColor3 = active and theme.Text or theme.Muted
+		end
+
+		local box = button:FindFirstChild("CheckBox")
+		if box then
+			box.BackgroundColor3 = active and theme.Accent or theme.Surface3
+			local stroke = box:FindFirstChildOfClass("UIStroke")
+			if stroke then
+				stroke.Color = active and theme.Accent2 or theme.Stroke
+				stroke.Transparency = active and 0.20 or 0.46
+			end
+		end
+
+		local check = box and box:FindFirstChild("Check")
+		if check then
+			check.BackgroundTransparency = active and 0 or 1
+		end
+
+		local rowStroke = button:FindFirstChildOfClass("UIStroke")
+		if rowStroke then
+			rowStroke.Color = theme.Accent
+			rowStroke.Transparency = active and 0.42 or 1
+		end
+	end
+
+	local function closeDropdown()
+		if not isOpen then
+			return
+		end
+
+		isOpen = false
+
+		if self.Window.ActiveInlineDropdown
+			and self.Window.ActiveInlineDropdown.Row == row then
+			self.Window.ActiveInlineDropdown = nil
+		end
+
+		tween(
+			chevronHost,
+			0.22,
+			{Rotation = 0},
+			Enum.EasingStyle.Quint
+		)
+
+		tween(
+			selectorScale,
+			0.18,
+			{Scale = 1},
+			Enum.EasingStyle.Quint
+		)
+
+		selectorStroke.Transparency = 0.52
+
+		tween(
+			panel,
+			0.20,
+			{
+				Position = UDim2.fromOffset(16, baseHeight - 3),
+				GroupTransparency = 1,
+			},
+			Enum.EasingStyle.Quint,
+			Enum.EasingDirection.In
+		)
+
+		tween(
+			row,
+			0.26,
+			{Size = UDim2.new(1, 0, 0, baseHeight)},
+			Enum.EasingStyle.Quint,
+			Enum.EasingDirection.InOut
+		)
+
+		task.delay(0.22, function()
+			if not isOpen and panel and panel.Parent then
+				panel.Visible = false
+			end
+		end)
+	end
+
+	local function openDropdown()
+		if isOpen then
+			closeDropdown()
+			return
+		end
+
+		if self.Window.ActiveInlineDropdown
+			and self.Window.ActiveInlineDropdown.Close
+			and self.Window.ActiveInlineDropdown.Row ~= row then
+			self.Window.ActiveInlineDropdown.Close()
+		end
+
+		isOpen = true
+
+		self.Window.ActiveInlineDropdown = {
+			Row = row,
+			Close = closeDropdown,
+		}
+
+		local panelHeight = calculatePanelHeight()
+		local expandedHeight = baseHeight + panelHeight + 10
+
+		panel.Size = UDim2.new(1, -32, 0, panelHeight)
+		panel.Position = UDim2.fromOffset(16, baseHeight - 3)
+		panel.GroupTransparency = 1
+		panel.Visible = true
+
+		tween(
+			row,
+			0.30,
+			{Size = UDim2.new(1, 0, 0, expandedHeight)},
+			Enum.EasingStyle.Quint
+		)
+
+		tween(
+			panel,
+			0.27,
+			{
+				Position = UDim2.fromOffset(16, baseHeight + 4),
+				GroupTransparency = 0,
+			},
+			Enum.EasingStyle.Quint
+		)
+
+		tween(
+			chevronHost,
+			0.22,
+			{Rotation = 180},
+			Enum.EasingStyle.Quint
+		)
+
+		tween(
+			selectorScale,
+			0.16,
+			{Scale = 1.015},
+			Enum.EasingStyle.Quint
+		)
+
+		selectorStroke.Transparency = 0.18
+	end
+
+	local function rebuildOptions()
+		disconnectOptions()
+
+		panel.Size = UDim2.new(1, -32, 0, calculatePanelHeight())
+		scroll.ScrollBarThickness = #values > maxVisible and 2 or 0
+
+		for index, value in ipairs(values) do
+			local button = create("TextButton", {
+				LayoutOrder = index,
+				AutoButtonColor = false,
+				Size = UDim2.new(1, 0, 0, itemHeight),
+				BackgroundColor3 = theme.Surface2,
+				BorderSizePixel = 0,
+				Text = "",
+				ZIndex = 12,
+				Parent = scroll,
+			})
+
+			addCorner(button, 10)
+			addStroke(button, theme.Accent, 1, 1)
+
+			local buttonScale = create("UIScale", {
+				Scale = 1,
+				Parent = button,
+			})
+
+			local checkBox = create("Frame", {
+				Name = "CheckBox",
+				AnchorPoint = Vector2.new(0, 0.5),
+				Position = UDim2.fromOffset(10, math.floor(itemHeight / 2)),
+				Size = UDim2.fromOffset(18, 18),
+				BackgroundColor3 = theme.Surface3,
+				BorderSizePixel = 0,
+				ZIndex = 13,
+				Parent = button,
+			})
+			addCorner(checkBox, 6)
+			addStroke(checkBox, theme.Stroke, 0.46, 1)
+
+			local check = create("Frame", {
+				Name = "Check",
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(0.5, 0.5),
+				Size = UDim2.fromOffset(7, 7),
+				BackgroundColor3 = Color3.new(1, 1, 1),
+				BackgroundTransparency = 1,
+				BorderSizePixel = 0,
+				ZIndex = 14,
+				Parent = checkBox,
+			})
+			addCorner(check, 3)
+
+			local label = create("TextLabel", {
+				Name = "Label",
+				Position = UDim2.fromOffset(38, 0),
+				Size = UDim2.new(1, -48, 1, 0),
+				BackgroundTransparency = 1,
+				Font = Enum.Font.GothamMedium,
+				Text = tostring(value),
+				TextColor3 = theme.Muted,
+				TextSize = 10,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				TextTruncate = Enum.TextTruncate.AtEnd,
+				ZIndex = 13,
+				Parent = button,
+			})
+
+			table.insert(optionButtons, button)
+
+			styleButton(button, value)
+
+			table.insert(optionConnections, button.MouseEnter:Connect(function()
+				tween(
+					buttonScale,
+					0.13,
+					{Scale = 1.01},
+					Enum.EasingStyle.Quint
+				)
+
+				if not selected[value] then
+					tween(button, 0.13, {
+						BackgroundColor3 = theme.Surface3,
+					})
+				end
+			end))
+
+			table.insert(optionConnections, button.MouseLeave:Connect(function()
+				tween(
+					buttonScale,
+					0.13,
+					{Scale = 1},
+					Enum.EasingStyle.Quint
+				)
+
+				styleButton(button, value)
+			end))
+
+			table.insert(optionConnections, button.MouseButton1Click:Connect(function()
+				selected[value] = not selected[value]
+				renderLabel()
+				styleButton(button, value)
+				safeCallback(options.Callback, listSelected())
+			end))
+		end
+
+		if isOpen then
+			local panelHeight = calculatePanelHeight()
+
+			tween(
+				row,
+				0.24,
+				{
+					Size = UDim2.new(
+						1,
+						0,
+						0,
+						baseHeight + panelHeight + 10
+					),
+				},
+				Enum.EasingStyle.Quint
+			)
 		end
 	end
 
@@ -6543,7 +7175,19 @@ function Section:AddMultiDropdown(options)
 			end
 		end
 
-		render()
+		renderLabel()
+
+		for _, button in ipairs(optionButtons) do
+			local label = button:FindFirstChild("Label")
+			if label then
+				for _, value in ipairs(values) do
+					if label.Text == tostring(value) then
+						styleButton(button, value)
+						break
+					end
+				end
+			end
+		end
 
 		if fireCallback ~= false then
 			safeCallback(options.Callback, listSelected())
@@ -6567,91 +7211,34 @@ function Section:AddMultiDropdown(options)
 			end
 		end
 
-		render()
+		renderLabel()
+		rebuildOptions()
 	end
 
-	local function openMenu()
-		local menuItems = {}
-
-		for _, value in ipairs(values) do
-			table.insert(menuItems, {
-				Text = (selected[value] and "[x] " or "[ ] ") .. tostring(value),
-				Value = value,
-				Selected = selected[value] == true,
-			})
-		end
-
-		tween(
-			selectorScale,
-			0.12,
-			{Scale = 1.018},
-			Enum.EasingStyle.Quint
-		)
-
-		tween(
-			chevronHost,
-			0.20,
-			{Rotation = 180},
-			Enum.EasingStyle.Quint
-		)
-
-		selectorStroke.Transparency = 0.18
-
-		local popupData = self.Window:_OpenMenu(
-			selector,
-			menuItems,
-			function(item, index, itemController)
-				selected[item.Value] = not selected[item.Value]
-				render()
-				safeCallback(options.Callback, listSelected())
-
-				if itemController then
-					local active = selected[item.Value] == true
-
-					itemController:SetSelected(
-						active,
-						(active and "[x] " or "[ ] ") .. tostring(item.Value)
-					)
-				end
-			end,
-			{
-				Width = math.max(selector.AbsoluteSize.X, 240),
-				MaxVisible = 6,
-				KeepOpen = true,
-			}
-		)
-
-		if popupData then
-			local originalClose = popupData.CloseAnimation
-
-			popupData.CloseAnimation = function()
-				tween(
-					selectorScale,
-					0.18,
-					{Scale = 1},
-					Enum.EasingStyle.Quint
-				)
-
-				tween(
-					chevronHost,
-					0.20,
-					{Rotation = 0},
-					Enum.EasingStyle.Quint
-				)
-
-				selectorStroke.Transparency = 0.52
-
-				if originalClose then
-					originalClose()
-				end
-			end
-		end
+	function controller:Open()
+		openDropdown()
 	end
 
-	render()
+	function controller:Close()
+		closeDropdown()
+	end
+
+	function controller:IsOpen()
+		return isOpen
+	end
+
+	self.Window:BindAccent(function(accent)
+		selectorStroke.Color = accent
+		panelStroke.Color = self.Window.Theme.StrokeSoft
+		separator.BackgroundColor3 = accent
+		scroll.ScrollBarImageColor3 = accent
+	end)
+
+	renderLabel()
+	rebuildOptions()
 
 	self.Window.Maid:Give(selector.MouseButton1Click:Connect(function()
-		openMenu()
+		openDropdown()
 	end))
 
 	self.Window:_RegisterControl(options.Id, controller)
@@ -7430,68 +8017,221 @@ function Section:AddProgress(options)
 	local value = math.clamp(tonumber(options.Default) or 0, 0, 100)
 
 	local row = self:_CreateRow(
-		description ~= "" and 96 or 82,
+		description ~= "" and 108 or 94,
 		name .. " " .. description
 	)
 
-	self:_CreateTextBlock(row, name, description, UDim2.new(1, -95, 0, 56))
+	self:_CreateTextBlock(
+		row,
+		name,
+		description,
+		UDim2.new(1, -102, 0, 58)
+	)
 
-	local valueLabel = create("TextLabel", {
+	local valuePill = create("Frame", {
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -16, 0, 15),
-		Size = UDim2.fromOffset(70, 22),
-		BackgroundTransparency = 1,
-		Font = Enum.Font.GothamBold,
-		Text = tostring(math.floor(value + 0.5)) .. "%",
-		TextColor3 = theme.Accent2,
-		TextSize = 11,
-		TextXAlignment = Enum.TextXAlignment.Right,
-		ZIndex = 10,
-		Parent = row,
-	})
-
-	local track = create("Frame", {
-		Position = UDim2.new(0, 16, 1, -24),
-		Size = UDim2.new(1, -32, 0, 8),
-		BackgroundColor3 = theme.Surface4,
+		Position = UDim2.new(1, -16, 0, 14),
+		Size = UDim2.fromOffset(70, 28),
+		BackgroundColor3 = theme.Surface,
 		BorderSizePixel = 0,
 		ZIndex = 10,
 		Parent = row,
 	})
 
-	addCorner(track, 4)
+	addCorner(valuePill, 10)
+	local valueStroke = addStroke(valuePill, theme.Accent, 0.38, 1)
+
+	local valueDot = create("Frame", {
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.fromOffset(10, 14),
+		Size = UDim2.fromOffset(6, 6),
+		BackgroundColor3 = theme.Accent,
+		BorderSizePixel = 0,
+		ZIndex = 11,
+		Parent = valuePill,
+	})
+	addCorner(valueDot, 3)
+
+	local valueLabel = create("TextLabel", {
+		Position = UDim2.fromOffset(22, 0),
+		Size = UDim2.new(1, -30, 1, 0),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.GothamBold,
+		Text = tostring(math.floor(value + 0.5)) .. "%",
+		TextColor3 = theme.Text,
+		TextSize = 10,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ZIndex = 11,
+		Parent = valuePill,
+	})
+
+	local trackGlow = create("Frame", {
+		Position = UDim2.new(0, 16, 1, -36),
+		Size = UDim2.new(value / 100, -16 * (value / 100), 0, 20),
+		BackgroundColor3 = theme.Accent,
+		BackgroundTransparency = 0.82,
+		BorderSizePixel = 0,
+		ZIndex = 9,
+		Parent = row,
+	})
+	addCorner(trackGlow, 10)
+
+	local track = create("Frame", {
+		Position = UDim2.new(0, 16, 1, -32),
+		Size = UDim2.new(1, -32, 0, 12),
+		BackgroundColor3 = theme.Surface4,
+		BorderSizePixel = 0,
+		ClipsDescendants = true,
+		ZIndex = 10,
+		Parent = row,
+	})
+
+	addCorner(track, 6)
+	addStroke(track, theme.StrokeSoft, 0.54, 1)
 
 	local fill = create("Frame", {
 		Size = UDim2.new(value / 100, 0, 1, 0),
 		BackgroundColor3 = theme.Accent,
 		BorderSizePixel = 0,
+		ClipsDescendants = true,
 		ZIndex = 11,
 		Parent = track,
 	})
 
-	addCorner(fill, 4)
+	addCorner(fill, 6)
 	local fillGradient = addGradient(fill, theme.Accent2, theme.Accent, 0)
 
-	self.Window:BindAccent(function(accent)
-		fill.BackgroundColor3 = accent
-		valueLabel.TextColor3 = self.Window.Theme.Accent2
-		fillGradient.Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, self.Window.Theme.Accent2),
-			ColorSequenceKeypoint.new(1, accent),
+	local highlight = create("Frame", {
+		Position = UDim2.fromOffset(3, 2),
+		Size = UDim2.new(1, -6, 0, 2),
+		BackgroundColor3 = Color3.new(1, 1, 1),
+		BackgroundTransparency = 0.72,
+		BorderSizePixel = 0,
+		ZIndex = 12,
+		Parent = fill,
+	})
+	addCorner(highlight, 1)
+
+	local cap = create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(1, 0, 0.5, 0),
+		Size = UDim2.fromOffset(10, 10),
+		BackgroundColor3 = Color3.new(1, 1, 1),
+		BorderSizePixel = 0,
+		ZIndex = 13,
+		Parent = fill,
+	})
+	addCorner(cap, 5)
+	addStroke(cap, theme.Accent, 0.12, 2)
+
+	local shine = create("Frame", {
+		Position = UDim2.fromOffset(-28, 0),
+		Size = UDim2.fromOffset(26, 12),
+		BackgroundColor3 = Color3.new(1, 1, 1),
+		BackgroundTransparency = 0.88,
+		BorderSizePixel = 0,
+		ZIndex = 12,
+		Parent = fill,
+	})
+	addCorner(shine, 6)
+
+	local milestoneRow = create("Frame", {
+		Position = UDim2.new(0, 16, 1, -16),
+		Size = UDim2.new(1, -32, 0, 6),
+		BackgroundTransparency = 1,
+		ZIndex = 10,
+		Parent = row,
+	})
+
+	for _, alpha in ipairs({0.25, 0.50, 0.75}) do
+		local tick = create("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.new(alpha, 0, 0.5, 0),
+			Size = UDim2.fromOffset(2, 4),
+			BackgroundColor3 = theme.Stroke,
+			BackgroundTransparency = 0.42,
+			BorderSizePixel = 0,
+			ZIndex = 11,
+			Parent = milestoneRow,
 		})
-	end)
+		addCorner(tick, 1)
+	end
 
 	local controller = {}
 
-	function controller:Set(newValue, fireCallback)
-		local numeric = math.clamp(tonumber(newValue) or 0, 0, 100)
-		value = numeric
-
-		tween(fill, 0.18, {
-			Size = UDim2.new(value / 100, 0, 1, 0),
-		})
+	local function render(newValue, animate)
+		value = math.clamp(tonumber(newValue) or 0, 0, 100)
+		local alpha = value / 100
 
 		valueLabel.Text = tostring(math.floor(value + 0.5)) .. "%"
+
+		if animate then
+			tween(
+				fill,
+				0.34,
+				{Size = UDim2.new(alpha, 0, 1, 0)},
+				Enum.EasingStyle.Quint
+			)
+
+			tween(
+				trackGlow,
+				0.34,
+				{
+					Size = UDim2.new(
+						alpha,
+						-16 * alpha,
+						0,
+						20
+					),
+				},
+				Enum.EasingStyle.Quint
+			)
+
+			tween(
+				valuePill,
+				0.16,
+				{Size = UDim2.fromOffset(74, 30)},
+				Enum.EasingStyle.Back
+			)
+
+			task.delay(0.16, function()
+				if valuePill and valuePill.Parent then
+					tween(
+						valuePill,
+						0.16,
+						{Size = UDim2.fromOffset(70, 28)},
+						Enum.EasingStyle.Quint
+					)
+				end
+			end)
+
+			task.defer(function()
+				if shine and shine.Parent then
+					shine.Position = UDim2.fromOffset(-28, 0)
+
+					tween(
+						shine,
+						0.42,
+						{
+							Position = UDim2.new(1, 4, 0, 0),
+						},
+						Enum.EasingStyle.Quint
+					)
+				end
+			end)
+		else
+			fill.Size = UDim2.new(alpha, 0, 1, 0)
+			trackGlow.Size = UDim2.new(
+				alpha,
+				-16 * alpha,
+				0,
+				20
+			)
+		end
+	end
+
+	function controller:Set(newValue, fireCallback)
+		render(newValue, true)
 
 		if fireCallback ~= false then
 			safeCallback(options.Callback, value)
@@ -7502,7 +8242,31 @@ function Section:AddProgress(options)
 		return value
 	end
 
+	self.Window:BindAccent(function(accent)
+		fill.BackgroundColor3 = accent
+		trackGlow.BackgroundColor3 = accent
+		valueDot.BackgroundColor3 = accent
+		valueStroke.Color = accent
+
+		local capStroke = cap:FindFirstChildOfClass("UIStroke")
+		if capStroke then
+			capStroke.Color = accent
+		end
+
+		fillGradient.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, self.Window.Theme.Accent2),
+			ColorSequenceKeypoint.new(1, accent),
+		})
+	end)
+
+	render(value, false)
+
 	self.Window:_RegisterControl(options.Id, controller)
+
+	if options.FireOnLoad then
+		safeCallback(options.Callback, value)
+	end
+
 	return controller
 end
 
@@ -7884,6 +8648,8 @@ function AlphaxUI:GetBuildInfo()
 			"CustomChangelog",
 			"AnimatedDropdowns",
 			"AnimatedMultiDropdowns",
+			"InlineDropdowns",
+			"PremiumProgressBar",
 			"ReducedBlur",
 		},
 	}
