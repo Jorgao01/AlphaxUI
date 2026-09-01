@@ -542,6 +542,64 @@ local function createVectorIcon(parent, iconName, color, zIndex)
 			)
 		end
 
+\telseif iconName == "clock" then
+		local ring = create("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromOffset(14, 14),
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			ZIndex = zIndex + 1,
+			Parent = holder,
+		})
+		addCorner(ring, 7)
+		markIconPart(addStroke(ring, color, 0, 2))
+
+		iconLine(
+			holder,
+			UDim2.new(0.5, -1, 0.5, -5),
+			UDim2.fromOffset(2, 6),
+			0,
+			color,
+			zIndex + 2,
+			1
+		)
+
+		iconLine(
+			holder,
+			UDim2.new(0.5, 0, 0.5, -1),
+			UDim2.fromOffset(5, 2),
+			25,
+			color,
+			zIndex + 2,
+			1
+		)
+
+	elseif iconName == "changelog" or iconName == "document" then
+		local page = create("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromOffset(14, 16),
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			ZIndex = zIndex + 1,
+			Parent = holder,
+		})
+		addCorner(page, 3)
+		markIconPart(addStroke(page, color, 0, 2))
+
+		for index = 0, 2 do
+			iconLine(
+				page,
+				UDim2.fromOffset(3, 4 + (index * 4)),
+				UDim2.fromOffset(index == 2 and 6 or 8, 2),
+				0,
+				color,
+				zIndex + 2,
+				1
+			)
+		end
+
 	elseif iconName == "chevron" or iconName == "down" then
 		iconLine(holder, UDim2.new(0.5, -7, 0.5, -1), UDim2.fromOffset(9, 2), 45, color, zIndex + 1, 1)
 		iconLine(holder, UDim2.new(0.5, -1, 0.5, -1), UDim2.fromOffset(9, 2), -45, color, zIndex + 1, 1)
@@ -598,6 +656,41 @@ local function hexToColor(text)
 	end
 
 	return Color3.fromRGB(r, g, b)
+end
+
+local function formatRuntime(seconds)
+	seconds = math.max(0, math.floor(tonumber(seconds) or 0))
+
+	local hours = math.floor(seconds / 3600)
+	local minutes = math.floor((seconds % 3600) / 60)
+	local secs = seconds % 60
+
+	if hours > 0 then
+		return string.format("%d:%02d:%02d", hours, minutes, secs)
+	end
+
+	return string.format("%02d:%02d", minutes, secs)
+end
+
+local function resolveChangelogColor(theme, entry)
+	if type(entry) == "table" and typeof(entry.Color) == "Color3" then
+		return entry.Color
+	end
+
+	local tag = ""
+	if type(entry) == "table" then
+		tag = string.upper(tostring(entry.Tag or entry.Type or "INFO"))
+	end
+
+	if tag == "FIX" or tag == "FIXED" or tag == "BUG" or tag == "BUGFIX" then
+		return theme.Success
+	elseif tag == "CHANGE" or tag == "CHANGED" or tag == "UPDATE" or tag == "UPDATED" then
+		return theme.Warning
+	elseif tag == "NEW" or tag == "ADDED" or tag == "ADD" then
+		return theme.Accent
+	end
+
+	return theme.Muted
 end
 
 --// ============================================================
@@ -911,6 +1004,40 @@ function AlphaxUI:CreateWindow(options)
 	self.CapturingKeybind = false
 	self.Closing = false
 
+	self.RuntimeStartedAt = os.clock()
+	self.CurrentFPS = 0
+
+	local changelogOption = options.Changelog
+	if type(changelogOption) ~= "table" then
+		changelogOption = {}
+	end
+
+	self.ChangelogData = {
+		Title = tostring(changelogOption.Title or "Changelog"),
+		Version = tostring(changelogOption.Version or ("v" .. VERSION)),
+		Subtitle = tostring(changelogOption.Subtitle or "Últimas alterações"),
+		Entries = {},
+	}
+
+	local sourceEntries = changelogOption.Entries
+	if type(sourceEntries) ~= "table" and #changelogOption > 0 then
+		sourceEntries = changelogOption
+	end
+
+	if type(sourceEntries) == "table" then
+		for _, entry in ipairs(sourceEntries) do
+			table.insert(self.ChangelogData.Entries, entry)
+		end
+	end
+
+	if #self.ChangelogData.Entries == 0 then
+		table.insert(self.ChangelogData.Entries, {
+			Tag = "INFO",
+			Title = "Changelog",
+			Description = "Nenhuma atualização foi definida pelo desenvolvedor.",
+		})
+	end
+
 	self.ToggleKey = options.ToggleKey or Enum.KeyCode.RightShift
 	self.ExpandedSize = options.Size or UDim2.fromOffset(920, 590)
 	self.MinimizedSize = UDim2.new(
@@ -1186,7 +1313,7 @@ function AlphaxUI:CreateWindow(options)
 	self.SubtitleLabel = create("TextLabel", {
 		BackgroundTransparency = 1,
 		Position = UDim2.fromOffset(82, 42),
-		Size = UDim2.new(1, -220, 0, 20),
+		Size = UDim2.new(1, -500, 0, 20),
 		Font = Enum.Font.Gotham,
 		Text = options.Subtitle or "Universal",
 		TextColor3 = theme.Muted,
@@ -1197,6 +1324,217 @@ function AlphaxUI:CreateWindow(options)
 		Parent = topbar,
 	})
 
+	self.TitleLabel.Size = UDim2.new(1, -500, 0, 28)
+
+	local telemetry = create("Frame", {
+		Name = "Telemetry",
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -126, 0.5, 0),
+		Size = UDim2.fromOffset(270, 38),
+		BackgroundTransparency = 1,
+		ZIndex = 5,
+		Parent = topbar,
+	})
+	self.Telemetry = telemetry
+
+	create("UIListLayout", {
+		FillDirection = Enum.FillDirection.Horizontal,
+		HorizontalAlignment = Enum.HorizontalAlignment.Right,
+		VerticalAlignment = Enum.VerticalAlignment.Center,
+		Padding = UDim.new(0, 7),
+		Parent = telemetry,
+	})
+
+	local fpsChip = create("Frame", {
+		Name = "FPSChip",
+		Size = UDim2.fromOffset(68, 34),
+		BackgroundColor3 = theme.Surface,
+		BackgroundTransparency = 0.12,
+		BorderSizePixel = 0,
+		ZIndex = 6,
+		Parent = telemetry,
+	})
+	addCorner(fpsChip, 11)
+	addStroke(fpsChip, theme.StrokeSoft, 0.38, 1)
+
+	create("TextLabel", {
+		Position = UDim2.fromOffset(9, 0),
+		Size = UDim2.fromOffset(22, 34),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.GothamBold,
+		Text = "FPS",
+		TextColor3 = theme.Faint,
+		TextSize = 8,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ZIndex = 7,
+		Parent = fpsChip,
+	})
+
+	local fpsValue = create("TextLabel", {
+		Name = "Value",
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -9, 0, 0),
+		Size = UDim2.fromOffset(30, 34),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.GothamBold,
+		Text = "--",
+		TextColor3 = theme.Text,
+		TextSize = 10,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		ZIndex = 7,
+		Parent = fpsChip,
+	})
+
+	local runtimeChip = create("Frame", {
+		Name = "RuntimeChip",
+		Size = UDim2.fromOffset(82, 34),
+		BackgroundColor3 = theme.Surface,
+		BackgroundTransparency = 0.12,
+		BorderSizePixel = 0,
+		ZIndex = 6,
+		Parent = telemetry,
+	})
+	addCorner(runtimeChip, 11)
+	addStroke(runtimeChip, theme.StrokeSoft, 0.38, 1)
+
+	local runtimeIconHost = create("Frame", {
+		Position = UDim2.fromOffset(9, 8),
+		Size = UDim2.fromOffset(18, 18),
+		BackgroundTransparency = 1,
+		ZIndex = 7,
+		Parent = runtimeChip,
+	})
+	createVectorIcon(runtimeIconHost, "clock", theme.Muted, 7)
+
+	local runtimeValue = create("TextLabel", {
+		Name = "Value",
+		Position = UDim2.fromOffset(32, 0),
+		Size = UDim2.new(1, -40, 1, 0),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.GothamBold,
+		Text = "00:00",
+		TextColor3 = theme.Text,
+		TextSize = 9,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ZIndex = 7,
+		Parent = runtimeChip,
+	})
+
+	local changelogButton = create("TextButton", {
+		Name = "ChangelogButton",
+		AutoButtonColor = false,
+		Size = UDim2.fromOffset(106, 34),
+		BackgroundColor3 = theme.Surface,
+		BackgroundTransparency = 0.04,
+		BorderSizePixel = 0,
+		Text = "",
+		ZIndex = 6,
+		Parent = telemetry,
+	})
+	addCorner(changelogButton, 11)
+	local changelogStroke = addStroke(changelogButton, theme.Accent, 0.48, 1)
+
+	local changelogIconHost = create("Frame", {
+		Position = UDim2.fromOffset(10, 8),
+		Size = UDim2.fromOffset(18, 18),
+		BackgroundTransparency = 1,
+		ZIndex = 7,
+		Parent = changelogButton,
+	})
+	local changelogIcon = createVectorIcon(
+		changelogIconHost,
+		"changelog",
+		theme.Accent,
+		7
+	)
+
+	local changelogLabel = create("TextLabel", {
+		Name = "Label",
+		Position = UDim2.fromOffset(34, 0),
+		Size = UDim2.new(1, -42, 1, 0),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.GothamBold,
+		Text = "Changelog",
+		TextColor3 = theme.Text,
+		TextSize = 9,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ZIndex = 7,
+		Parent = changelogButton,
+	})
+
+	local changelogScale = create("UIScale", {
+		Scale = 1,
+		Parent = changelogButton,
+	})
+
+	self.FPSChip = fpsChip
+	self.FPSValueLabel = fpsValue
+	self.RuntimeChip = runtimeChip
+	self.RuntimeValueLabel = runtimeValue
+	self.ChangelogButton = changelogButton
+	self.ChangelogButtonLabel = changelogLabel
+
+	self:BindAccent(function(accent)
+		changelogStroke.Color = accent
+		setVectorIconColor(changelogIcon, accent)
+	end)
+
+	self.Maid:Give(changelogButton.MouseEnter:Connect(function()
+		tween(changelogScale, 0.14, {Scale = 1.035}, Enum.EasingStyle.Quint)
+		tween(changelogButton, 0.14, {BackgroundColor3 = theme.Surface3})
+		changelogStroke.Transparency = 0.18
+	end))
+
+	self.Maid:Give(changelogButton.MouseLeave:Connect(function()
+		tween(changelogScale, 0.14, {Scale = 1}, Enum.EasingStyle.Quint)
+		tween(changelogButton, 0.14, {BackgroundColor3 = theme.Surface})
+		changelogStroke.Transparency = 0.48
+	end))
+
+	self.Maid:Give(changelogButton.MouseButton1Down:Connect(function()
+		tween(changelogScale, 0.07, {Scale = 0.95}, Enum.EasingStyle.Quint)
+	end))
+
+	self.Maid:Give(changelogButton.MouseButton1Up:Connect(function()
+		tween(changelogScale, 0.12, {Scale = 1.035}, Enum.EasingStyle.Back)
+	end))
+
+	self.Maid:Give(changelogButton.MouseButton1Click:Connect(function()
+		self:OpenChangelog()
+	end))
+
+	do
+		local RunService = game:GetService("RunService")
+		local frames = 0
+		local sampleTime = 0
+		local runtimeAccumulator = 0
+
+		self.Maid:Give(RunService.RenderStepped:Connect(function(deltaTime)
+			frames += 1
+			sampleTime += deltaTime
+			runtimeAccumulator += deltaTime
+
+			if sampleTime >= 0.50 then
+				local fps = math.floor((frames / sampleTime) + 0.5)
+				self.CurrentFPS = fps
+
+				if fpsValue and fpsValue.Parent then
+					fpsValue.Text = tostring(fps)
+				end
+
+				frames = 0
+				sampleTime = 0
+			end
+
+			if runtimeAccumulator >= 0.25 then
+				runtimeAccumulator = 0
+
+				if runtimeValue and runtimeValue.Parent then
+					runtimeValue.Text = formatRuntime(os.clock() - self.RuntimeStartedAt)
+				end
+			end
+		end))
+	end
 
 	local windowControls = create("Frame", {
 		AnchorPoint = Vector2.new(1, 0.5),
@@ -1702,6 +2040,27 @@ function AlphaxUI:CreateWindow(options)
 			if isMobile then
 				self.MobileMenuButton.Visible = true
 
+				if self.Telemetry then
+					self.Telemetry.Size = UDim2.fromOffset(38, 36)
+					self.Telemetry.Position = UDim2.new(1, -108, 0.5, 0)
+				end
+
+				if self.FPSChip then
+					self.FPSChip.Visible = false
+				end
+
+				if self.RuntimeChip then
+					self.RuntimeChip.Visible = false
+				end
+
+				if self.ChangelogButton then
+					self.ChangelogButton.Size = UDim2.fromOffset(36, 34)
+				end
+
+				if self.ChangelogButtonLabel then
+					self.ChangelogButtonLabel.Visible = false
+				end
+
 				if not self.Minimized then
 					chrome.Size = UDim2.new(1, -14, 1, -22)
 					chrome.Position = UDim2.fromScale(0.5, 0.5)
@@ -1772,6 +2131,27 @@ function AlphaxUI:CreateWindow(options)
 				self.MobileSidebarOpen = false
 				self.MobileMenuButton.Visible = false
 
+				if self.Telemetry then
+					self.Telemetry.Size = UDim2.fromOffset(270, 38)
+					self.Telemetry.Position = UDim2.new(1, -126, 0.5, 0)
+				end
+
+				if self.FPSChip then
+					self.FPSChip.Visible = true
+				end
+
+				if self.RuntimeChip then
+					self.RuntimeChip.Visible = true
+				end
+
+				if self.ChangelogButton then
+					self.ChangelogButton.Size = UDim2.fromOffset(106, 34)
+				end
+
+				if self.ChangelogButtonLabel then
+					self.ChangelogButtonLabel.Visible = true
+				end
+
 				sidebarShade.Visible = false
 				sidebarShade.BackgroundTransparency = 1
 
@@ -1786,11 +2166,11 @@ function AlphaxUI:CreateWindow(options)
 				logoShadow.Position = UDim2.fromOffset(26, 18)
 
 				self.TitleLabel.Position = UDim2.fromOffset(82, 15)
-				self.TitleLabel.Size = UDim2.new(1, -220, 0, 28)
+				self.TitleLabel.Size = UDim2.new(1, -500, 0, 28)
 				self.TitleLabel.TextSize = 18
 
 				self.SubtitleLabel.Position = UDim2.fromOffset(82, 42)
-				self.SubtitleLabel.Size = UDim2.new(1, -220, 0, 20)
+				self.SubtitleLabel.Size = UDim2.new(1, -500, 0, 20)
 				self.SubtitleLabel.TextSize = 12
 
 				windowControls.Position = UDim2.new(1, -20, 0.5, 0)
@@ -1916,6 +2296,492 @@ function Window:BindAccent(callback)
 	end)
 
 	return callback
+end
+
+function Window:SetChangelog(data)
+	if type(data) ~= "table" then
+		return false
+	end
+
+	local entries = data.Entries
+	if type(entries) ~= "table" and #data > 0 then
+		entries = data
+	end
+
+	self.ChangelogData = {
+		Title = tostring(data.Title or "Changelog"),
+		Version = tostring(data.Version or ("v" .. VERSION)),
+		Subtitle = tostring(data.Subtitle or "Últimas alterações"),
+		Entries = {},
+	}
+
+	if type(entries) == "table" then
+		for _, entry in ipairs(entries) do
+			table.insert(self.ChangelogData.Entries, entry)
+		end
+	end
+
+	if #self.ChangelogData.Entries == 0 then
+		table.insert(self.ChangelogData.Entries, {
+			Tag = "INFO",
+			Title = "Changelog",
+			Description = "Nenhuma atualização foi definida pelo desenvolvedor.",
+		})
+	end
+
+	return true
+end
+
+function Window:AddChangelogEntry(entry)
+	if entry == nil then
+		return false
+	end
+
+	if not self.ChangelogData then
+		self:SetChangelog({})
+	end
+
+	table.insert(self.ChangelogData.Entries, entry)
+	return true
+end
+
+function Window:OpenChangelog()
+	if self.Destroyed or not self.ModalLayer then
+		return false
+	end
+
+	self:_ClosePopup()
+
+	local theme = self.Theme
+	local data = self.ChangelogData
+
+	self.ModalLayer.Visible = true
+
+	for _, child in ipairs(self.ModalLayer:GetChildren()) do
+		child:Destroy()
+	end
+
+	local camera = workspace.CurrentCamera
+	local viewport = camera and camera.ViewportSize or Vector2.new(800, 600)
+	local panelWidth = math.min(540, math.max(300, viewport.X - 28))
+	local panelHeight = math.min(450, math.max(320, viewport.Y - 50))
+	local compactHeader = panelWidth < 390
+
+	local shade = create("TextButton", {
+		AutoButtonColor = false,
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = Color3.new(0, 0, 0),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Text = "",
+		Modal = true,
+		ZIndex = 301,
+		Parent = self.ModalLayer,
+	})
+
+	local shadow = create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, 16),
+		Size = UDim2.fromOffset(panelWidth + 18, panelHeight + 20),
+		BackgroundColor3 = Color3.new(0, 0, 0),
+		BackgroundTransparency = 0.74,
+		BorderSizePixel = 0,
+		ZIndex = 301,
+		Parent = self.ModalLayer,
+	})
+	addCorner(shadow, 26)
+
+	local panel = create("CanvasGroup", {
+		Name = "ChangelogPanel",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, 18),
+		Size = UDim2.fromOffset(panelWidth, panelHeight),
+		BackgroundColor3 = theme.Surface,
+		BackgroundTransparency = 0.01,
+		BorderSizePixel = 0,
+		ClipsDescendants = true,
+		GroupTransparency = 1,
+		ZIndex = 302,
+		Parent = self.ModalLayer,
+	})
+	addCorner(panel, 22)
+	addStroke(panel, theme.Stroke, 0.12, 1)
+
+	local panelScale = create("UIScale", {
+		Scale = 0.92,
+		Parent = panel,
+	})
+
+	local topLine = create("Frame", {
+		Position = UDim2.fromOffset(20, 0),
+		Size = UDim2.new(1, -40, 0, 2),
+		BackgroundColor3 = theme.Accent,
+		BorderSizePixel = 0,
+		ZIndex = 303,
+		Parent = panel,
+	})
+	addCorner(topLine, 1)
+	addGradient(topLine, theme.Accent2, theme.Accent, 0)
+
+	local headerIconWrap = create("Frame", {
+		Position = UDim2.fromOffset(20, 19),
+		Size = UDim2.fromOffset(42, 42),
+		BackgroundColor3 = theme.Accent,
+		BackgroundTransparency = 0.82,
+		BorderSizePixel = 0,
+		ZIndex = 303,
+		Parent = panel,
+	})
+	addCorner(headerIconWrap, 13)
+	addStroke(headerIconWrap, theme.Accent, 0.34, 1)
+
+	local headerIconHost = create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(21, 21),
+		BackgroundTransparency = 1,
+		ZIndex = 304,
+		Parent = headerIconWrap,
+	})
+	createVectorIcon(headerIconHost, "changelog", theme.Accent2, 304)
+
+	create("TextLabel", {
+		Position = UDim2.fromOffset(76, 17),
+		Size = compactHeader
+			and UDim2.new(1, -136, 0, 24)
+			or UDim2.new(1, -190, 0, 24),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.GothamBold,
+		Text = tostring(data.Title or "Changelog"),
+		TextColor3 = theme.Text,
+		TextSize = compactHeader and 15 or 17,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		ZIndex = 303,
+		Parent = panel,
+	})
+
+	create("TextLabel", {
+		Position = UDim2.fromOffset(76, 41),
+		Size = UDim2.new(1, -136, 0, 18),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.Gotham,
+		Text = tostring(data.Subtitle or "Últimas alterações"),
+		TextColor3 = theme.Muted,
+		TextSize = 10,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		ZIndex = 303,
+		Parent = panel,
+	})
+
+	local versionBadge = create("Frame", {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -62, 0, 24),
+		Size = UDim2.fromOffset(76, 28),
+		BackgroundColor3 = theme.Surface2,
+		BorderSizePixel = 0,
+		Visible = not compactHeader,
+		ZIndex = 303,
+		Parent = panel,
+	})
+	addCorner(versionBadge, 9)
+	addStroke(versionBadge, theme.StrokeSoft, 0.30, 1)
+
+	create("TextLabel", {
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+		Font = Enum.Font.GothamBold,
+		Text = tostring(data.Version or ("v" .. VERSION)),
+		TextColor3 = theme.Muted,
+		TextSize = 9,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		ZIndex = 304,
+		Parent = versionBadge,
+	})
+
+	local closeButton = create("TextButton", {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -18, 0, 20),
+		Size = UDim2.fromOffset(34, 34),
+		AutoButtonColor = false,
+		BackgroundColor3 = theme.Surface2,
+		BorderSizePixel = 0,
+		Text = "",
+		ZIndex = 304,
+		Parent = panel,
+	})
+	addCorner(closeButton, 10)
+	local closeStroke = addStroke(closeButton, theme.StrokeSoft, 0.34, 1)
+
+	local closeIconHost = create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(16, 16),
+		BackgroundTransparency = 1,
+		ZIndex = 305,
+		Parent = closeButton,
+	})
+	createVectorIcon(closeIconHost, "close", theme.Muted, 305)
+
+	local closeScale = create("UIScale", {
+		Scale = 1,
+		Parent = closeButton,
+	})
+
+	create("Frame", {
+		Position = UDim2.fromOffset(20, 76),
+		Size = UDim2.new(1, -40, 0, 1),
+		BackgroundColor3 = theme.Stroke,
+		BackgroundTransparency = 0.52,
+		BorderSizePixel = 0,
+		ZIndex = 303,
+		Parent = panel,
+	})
+
+	local list = create("ScrollingFrame", {
+		Position = UDim2.fromOffset(18, 88),
+		Size = UDim2.new(1, -36, 1, -106),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		CanvasSize = UDim2.fromOffset(0, 0),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		ScrollBarThickness = 3,
+		ScrollBarImageColor3 = theme.Accent,
+		ScrollBarImageTransparency = 0.34,
+		ZIndex = 303,
+		Parent = panel,
+	})
+
+	create("UIListLayout", {
+		Padding = UDim.new(0, 9),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = list,
+	})
+	addPadding(list, 1, 5, 1, 5)
+
+	for index, rawEntry in ipairs(data.Entries or {}) do
+		local entry = type(rawEntry) == "table"
+			and rawEntry
+			or {
+				Title = tostring(rawEntry),
+				Description = "",
+				Tag = "INFO",
+			}
+
+		local titleText = tostring(entry.Title or entry.Name or ("Update " .. index))
+		local descriptionText = tostring(entry.Description or entry.Content or "")
+		local tagText = string.upper(tostring(entry.Tag or entry.Type or "INFO"))
+		local tagColor = resolveChangelogColor(theme, entry)
+
+		local descriptionHeight = 0
+		if descriptionText ~= "" then
+			local okMeasure, measured = pcall(function()
+				return TextService:GetTextSize(
+					descriptionText,
+					10,
+					Enum.Font.Gotham,
+					Vector2.new(math.max(160, panelWidth - 70), 300)
+				)
+			end)
+
+			descriptionHeight = okMeasure and measured
+				and math.max(16, math.ceil(measured.Y))
+				or 16
+		end
+
+		local cardHeight = descriptionText ~= ""
+			and math.clamp(48 + descriptionHeight, 68, 112)
+			or 58
+
+		local entryCard = create("Frame", {
+			LayoutOrder = index,
+			Size = UDim2.new(1, -6, 0, cardHeight),
+			BackgroundColor3 = theme.Surface2,
+			BorderSizePixel = 0,
+			ZIndex = 304,
+			Parent = list,
+		})
+		addCorner(entryCard, 14)
+		local entryStroke = addStroke(entryCard, theme.StrokeSoft, 0.28, 1)
+
+		local entryScale = create("UIScale", {
+			Scale = 1,
+			Parent = entryCard,
+		})
+
+		local accentBar = create("Frame", {
+			Position = UDim2.fromOffset(0, 10),
+			Size = UDim2.new(0, 3, 1, -20),
+			BackgroundColor3 = tagColor,
+			BorderSizePixel = 0,
+			ZIndex = 305,
+			Parent = entryCard,
+		})
+		addCorner(accentBar, 2)
+
+		local tagWidth = math.clamp(18 + (#tagText * 6), 48, 86)
+
+		local tag = create("Frame", {
+			Position = UDim2.fromOffset(14, 12),
+			Size = UDim2.fromOffset(tagWidth, 22),
+			BackgroundColor3 = tagColor,
+			BackgroundTransparency = 0.86,
+			BorderSizePixel = 0,
+			ZIndex = 305,
+			Parent = entryCard,
+		})
+		addCorner(tag, 8)
+		addStroke(tag, tagColor, 0.42, 1)
+
+		create("TextLabel", {
+			BackgroundTransparency = 1,
+			Size = UDim2.fromScale(1, 1),
+			Font = Enum.Font.GothamBold,
+			Text = tagText,
+			TextColor3 = tagColor,
+			TextSize = 8,
+			ZIndex = 306,
+			Parent = tag,
+		})
+
+		create("TextLabel", {
+			Position = UDim2.fromOffset(24 + tagWidth, 10),
+			Size = UDim2.new(1, -(38 + tagWidth), 0, 25),
+			BackgroundTransparency = 1,
+			Font = Enum.Font.GothamBold,
+			Text = titleText,
+			TextColor3 = theme.Text,
+			TextSize = 11,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+			ZIndex = 305,
+			Parent = entryCard,
+		})
+
+		if descriptionText ~= "" then
+			create("TextLabel", {
+				Position = UDim2.fromOffset(14, 40),
+				Size = UDim2.new(1, -28, 0, descriptionHeight),
+				BackgroundTransparency = 1,
+				Font = Enum.Font.Gotham,
+				Text = descriptionText,
+				TextColor3 = theme.Muted,
+				TextSize = 10,
+				TextWrapped = true,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				TextYAlignment = Enum.TextYAlignment.Top,
+				ZIndex = 305,
+				Parent = entryCard,
+			})
+		end
+
+		entryCard.MouseEnter:Connect(function()
+			tween(entryScale, 0.14, {Scale = 1.008}, Enum.EasingStyle.Quint)
+			entryStroke.Color = tagColor
+			entryStroke.Transparency = 0.58
+		end)
+
+		entryCard.MouseLeave:Connect(function()
+			tween(entryScale, 0.14, {Scale = 1}, Enum.EasingStyle.Quint)
+			entryStroke.Color = theme.StrokeSoft
+			entryStroke.Transparency = 0.28
+		end)
+	end
+
+	local closed = false
+
+	local function closePanel()
+		if closed then
+			return
+		end
+		closed = true
+
+		tween(shade, 0.24, {BackgroundTransparency = 1})
+
+		tween(
+			panel,
+			0.28,
+			{
+				Position = UDim2.new(0.5, 0, 0.5, -10),
+				GroupTransparency = 1,
+			},
+			Enum.EasingStyle.Quint,
+			Enum.EasingDirection.In
+		)
+
+		tween(
+			panelScale,
+			0.28,
+			{Scale = 0.94},
+			Enum.EasingStyle.Quint,
+			Enum.EasingDirection.In
+		)
+
+		tween(
+			shadow,
+			0.26,
+			{
+				Position = UDim2.new(0.5, 0, 0.5, 22),
+				BackgroundTransparency = 1,
+			},
+			Enum.EasingStyle.Quint,
+			Enum.EasingDirection.In
+		)
+
+		task.delay(0.30, function()
+			if self.ModalLayer then
+				self.ModalLayer.Visible = false
+				for _, child in ipairs(self.ModalLayer:GetChildren()) do
+					child:Destroy()
+				end
+			end
+		end)
+	end
+
+	closeButton.MouseEnter:Connect(function()
+		tween(closeScale, 0.13, {Scale = 1.06}, Enum.EasingStyle.Quint)
+		closeStroke.Transparency = 0.14
+	end)
+
+	closeButton.MouseLeave:Connect(function()
+		tween(closeScale, 0.13, {Scale = 1}, Enum.EasingStyle.Quint)
+		closeStroke.Transparency = 0.34
+	end)
+
+	closeButton.MouseButton1Click:Connect(closePanel)
+	shade.MouseButton1Click:Connect(closePanel)
+
+	tween(shade, 0.22, {BackgroundTransparency = 0.40})
+
+	tween(
+		shadow,
+		0.31,
+		{
+			Position = UDim2.new(0.5, 0, 0.5, 10),
+			BackgroundTransparency = 0.76,
+		},
+		Enum.EasingStyle.Quint
+	)
+
+	tween(
+		panel,
+		0.32,
+		{
+			Position = UDim2.fromScale(0.5, 0.5),
+			GroupTransparency = 0,
+		},
+		Enum.EasingStyle.Quint
+	)
+
+	tween(
+		panelScale,
+		0.38,
+		{Scale = 1},
+		Enum.EasingStyle.Back
+	)
+
+	return true
 end
 
 function Window:SetScale(scale)
@@ -6672,6 +7538,9 @@ function AlphaxUI:GetBuildInfo()
 			"ConfigurableKeybind",
 			"SlidingTabIndicator",
 			"SlidingSegmentedIndicator",
+			"LiveFPS",
+			"UIRuntime",
+			"CustomChangelog",
 			"ReducedBlur",
 		},
 	}
