@@ -386,6 +386,66 @@ Section.__index = Section
 --// DRAG
 --// ============================================================
 
+local function resolveSizePixels(size, viewport)
+	return Vector2.new(
+		(viewport.X * size.X.Scale) + size.X.Offset,
+		(viewport.Y * size.Y.Scale) + size.Y.Offset
+	)
+end
+
+local function clampWindowPosition(target, desiredPosition, sizeOverride, margin)
+	local camera = workspace.CurrentCamera
+
+	if not camera then
+		return desiredPosition
+	end
+
+	local viewport = camera.ViewportSize
+	margin = margin or 10
+
+	local sizePixels = resolveSizePixels(sizeOverride or target.Size, viewport)
+
+	local centerX =
+		(viewport.X * desiredPosition.X.Scale)
+		+ desiredPosition.X.Offset
+
+	local centerY =
+		(viewport.Y * desiredPosition.Y.Scale)
+		+ desiredPosition.Y.Offset
+
+	-- Mantém a janela inteira na tela quando possível.
+	-- Se a janela for maior que o viewport, mantém ao menos o centro seguro.
+	local usableWidth = math.max(1, viewport.X - (margin * 2))
+	local usableHeight = math.max(1, viewport.Y - (margin * 2))
+
+	if sizePixels.X >= usableWidth then
+		centerX = viewport.X / 2
+	else
+		local halfWidth = sizePixels.X / 2
+		centerX = math.clamp(
+			centerX,
+			margin + halfWidth,
+			viewport.X - margin - halfWidth
+		)
+	end
+
+	if sizePixels.Y >= usableHeight then
+		centerY = viewport.Y / 2
+	else
+		local halfHeight = sizePixels.Y / 2
+		centerY = math.clamp(
+			centerY,
+			margin + halfHeight,
+			viewport.Y - margin - halfHeight
+		)
+	end
+
+	return UDim2.fromOffset(
+		math.floor(centerX + 0.5),
+		math.floor(centerY + 0.5)
+	)
+end
+
 local function makeDraggable(handle, target, maid)
 	local dragging = false
 	local dragInput = nil
@@ -401,6 +461,7 @@ local function makeDraggable(handle, target, maid)
 			startTargetPosition = target.Position
 
 			local changedConnection
+
 			changedConnection = input.Changed:Connect(function()
 				if input.UserInputState == Enum.UserInputState.End then
 					dragging = false
@@ -408,6 +469,16 @@ local function makeDraggable(handle, target, maid)
 					if changedConnection then
 						changedConnection:Disconnect()
 						changedConnection = nil
+					end
+
+					-- Revalida a posição ao soltar.
+					if target and target.Parent then
+						target.Position = clampWindowPosition(
+							target,
+							target.Position,
+							target.Size,
+							10
+						)
 					end
 				end
 			end)
@@ -417,6 +488,7 @@ local function makeDraggable(handle, target, maid)
 	maid:Give(handle.InputChanged:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseMovement
 			or input.UserInputType == Enum.UserInputType.Touch then
+
 			dragInput = input
 		end
 	end))
@@ -432,11 +504,18 @@ local function makeDraggable(handle, target, maid)
 
 		local delta = input.Position - startInputPosition
 
-		target.Position = UDim2.new(
+		local proposed = UDim2.new(
 			startTargetPosition.X.Scale,
 			startTargetPosition.X.Offset + delta.X,
 			startTargetPosition.Y.Scale,
 			startTargetPosition.Y.Offset + delta.Y
+		)
+
+		target.Position = clampWindowPosition(
+			target,
+			proposed,
+			target.Size,
+			10
 		)
 	end))
 end
@@ -573,7 +652,7 @@ function AlphaxUI:CreateWindow(options)
 		Parent = chrome,
 	})
 
-	addCorner(glow, 22)
+	addCorner(glow, 27)
 
 	local glowStroke = addStroke(glow, theme.Accent, 0.58, 2)
 	self:BindAccent(function(accent)
@@ -591,7 +670,7 @@ function AlphaxUI:CreateWindow(options)
 	})
 
 	self.Root = root
-	addCorner(root, 18)
+	addCorner(root, 22)
 	addStroke(root, theme.Stroke, 0.12, 1)
 
 	local softGlow = create("Frame", {
@@ -783,6 +862,13 @@ function AlphaxUI:CreateWindow(options)
 
 	self.Body = body
 
+	local bodyScale = create("UIScale", {
+		Scale = 1,
+		Parent = body,
+	})
+
+	self.BodyScale = bodyScale
+
 	-- Sidebar
 	local sidebar = create("Frame", {
 		Name = "Sidebar",
@@ -832,7 +918,7 @@ function AlphaxUI:CreateWindow(options)
 		Parent = sidebar,
 	})
 
-	addCorner(searchWrap, 13)
+	addCorner(searchWrap, 15)
 	addStroke(searchWrap, theme.Stroke, 0.35, 1)
 
 	-- Ícone de busca desenhado com Frames para não depender de glyph Unicode.
@@ -1085,6 +1171,17 @@ function AlphaxUI:CreateWindow(options)
 				content.Position = UDim2.fromOffset(250, 0)
 				content.Size = UDim2.new(1, -250, 1, 0)
 			end
+
+			task.defer(function()
+				if chrome and chrome.Parent then
+					chrome.Position = clampWindowPosition(
+						chrome,
+						chrome.Position,
+						chrome.Size,
+						10
+					)
+				end
+			end)
 		end
 
 		updateResponsive()
@@ -1093,20 +1190,47 @@ function AlphaxUI:CreateWindow(options)
 
 	-- Opening animation.
 	local originalPosition = chrome.Position
+
+	local windowScale = create("UIScale", {
+		Scale = 0.965,
+		Parent = chrome,
+	})
+
+	self.WindowScale = windowScale
+
 	chrome.Position = UDim2.new(
 		originalPosition.X.Scale,
 		originalPosition.X.Offset,
 		originalPosition.Y.Scale,
-		originalPosition.Y.Offset + 12
+		originalPosition.Y.Offset + 14
 	)
 
 	root.BackgroundTransparency = 1
 
-	tween(chrome, 0.24, {
-		Position = originalPosition,
-	})
+	tween(
+		chrome,
+		0.28,
+		{
+			Position = clampWindowPosition(
+				chrome,
+				originalPosition,
+				chrome.Size,
+				10
+			),
+		},
+		Enum.EasingStyle.Quint
+	)
 
-	tween(root, 0.24, {
+	tween(
+		windowScale,
+		0.34,
+		{
+			Scale = 1,
+		},
+		Enum.EasingStyle.Back
+	)
+
+	tween(root, 0.22, {
 		BackgroundTransparency = 0,
 	})
 
@@ -1159,6 +1283,32 @@ function Window:SetToggleKey(keyCode)
 	return false
 end
 
+function Window:_ClampToViewport(sizeOverride, animated)
+	if self.Destroyed or not self.Chrome then
+		return
+	end
+
+	local targetPosition = clampWindowPosition(
+		self.Chrome,
+		self.Chrome.Position,
+		sizeOverride or self.Chrome.Size,
+		10
+	)
+
+	if animated then
+		tween(
+			self.Chrome,
+			0.24,
+			{
+				Position = targetPosition,
+			},
+			Enum.EasingStyle.Quint
+		)
+	else
+		self.Chrome.Position = targetPosition
+	end
+end
+
 function Window:SetMinimized(state)
 	if self.Destroyed then
 		return
@@ -1167,20 +1317,71 @@ function Window:SetMinimized(state)
 	self.Minimized = state == true
 	self:_ClosePopup()
 
+	local targetSize
+
 	if self.Minimized then
-		tween(self.Chrome, 0.22, {
-			Size = self.MinimizedSize,
-		})
+		targetSize = self.MinimizedSize
 	else
 		if self.MobileMode then
-			tween(self.Chrome, 0.22, {
-				Size = UDim2.new(1, -22, 1, -60),
-			})
+			targetSize = UDim2.new(1, -22, 1, -60)
 		else
-			tween(self.Chrome, 0.22, {
-				Size = self.ExpandedSize,
-			})
+			targetSize = self.ExpandedSize
 		end
+	end
+
+	-- ESSENCIAL:
+	-- usa o tamanho FINAL para calcular onde a janela pode ficar.
+	-- Assim, se ela foi arrastada para o topo enquanto minimizada,
+	-- ao restaurar ela volta automaticamente para uma posição segura.
+	local safePosition = clampWindowPosition(
+		self.Chrome,
+		self.Chrome.Position,
+		targetSize,
+		10
+	)
+
+	if not self.Minimized then
+		self.Body.Visible = true
+	end
+
+	if self.BodyScale then
+		tween(
+			self.BodyScale,
+			self.Minimized and 0.14 or 0.24,
+			{
+				Scale = self.Minimized and 0.985 or 1,
+			},
+			self.Minimized and Enum.EasingStyle.Quint or Enum.EasingStyle.Back
+		)
+	end
+
+	tween(
+		self.Chrome,
+		self.Minimized and 0.22 or 0.30,
+		{
+			Size = targetSize,
+			Position = safePosition,
+		},
+		self.Minimized and Enum.EasingStyle.Quint or Enum.EasingStyle.Quint
+	)
+
+	if self.WindowScale then
+		tween(
+			self.WindowScale,
+			0.20,
+			{
+				Scale = self.Minimized and 0.992 or 1,
+			},
+			Enum.EasingStyle.Quint
+		)
+	end
+
+	if self.Minimized then
+		task.delay(0.23, function()
+			if self.Minimized and self.Body then
+				self.Body.Visible = false
+			end
+		end)
 	end
 end
 
@@ -1554,7 +1755,7 @@ function Window:Notify(options)
 		Parent = self.NotificationHolder,
 	})
 
-	addCorner(card, 13)
+	addCorner(card, 15)
 	addStroke(card, theme.Stroke, 0.25, 1)
 
 	-- A linha fica FORA de qualquer UIListLayout.
@@ -1672,7 +1873,7 @@ function Window:Confirm(options)
 		AutoButtonColor = false,
 		Size = UDim2.fromScale(1, 1),
 		BackgroundColor3 = Color3.new(0, 0, 0),
-		BackgroundTransparency = 0.42,
+		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		Text = "",
 		Modal = true,
@@ -1680,68 +1881,164 @@ function Window:Confirm(options)
 		Parent = self.ModalLayer,
 	})
 
+	local shadow = create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, 13),
+		Size = UDim2.fromOffset(454, 270),
+		BackgroundColor3 = Color3.new(0, 0, 0),
+		BackgroundTransparency = 0.64,
+		BorderSizePixel = 0,
+		ZIndex = 301,
+		Parent = self.ModalLayer,
+	})
+
+	addCorner(shadow, 26)
+
 	local modal = create("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(410, 218),
+		Position = UDim2.new(0.5, 0, 0.5, 14),
+		Size = UDim2.fromOffset(438, 254),
 		BackgroundColor3 = theme.Surface,
+		BackgroundTransparency = 0.02,
 		BorderSizePixel = 0,
+		ClipsDescendants = true,
 		ZIndex = 302,
 		Parent = self.ModalLayer,
 	})
 
-	addCorner(modal, 16)
-	addStroke(modal, accent, 0.22, 1)
+	addCorner(modal, 22)
+
+	local modalStroke = addStroke(modal, accent, 0.18, 1)
 
 	local modalScale = create("UIScale", {
-		Scale = 0.97,
+		Scale = 0.92,
 		Parent = modal,
 	})
 
-	local accentTop = create("Frame", {
-		Size = UDim2.new(1, -24, 0, 2),
-		Position = UDim2.fromOffset(12, 0),
+	local shadowScale = create("UIScale", {
+		Scale = 0.94,
+		Parent = shadow,
+	})
+
+	local accentGlow = create("Frame", {
+		Position = UDim2.fromOffset(-50, -58),
+		Size = UDim2.fromOffset(180, 180),
 		BackgroundColor3 = accent,
-		BackgroundTransparency = 0.10,
+		BackgroundTransparency = 0.82,
+		BorderSizePixel = 0,
+		ZIndex = 302,
+		Parent = modal,
+	})
+	addCorner(accentGlow, 90)
+
+	local topLine = create("Frame", {
+		Position = UDim2.fromOffset(18, 0),
+		Size = UDim2.new(1, -36, 0, 2),
+		BackgroundColor3 = accent,
+		BackgroundTransparency = 0.02,
+		BorderSizePixel = 0,
+		ZIndex = 304,
+		Parent = modal,
+	})
+	addCorner(topLine, 2)
+	addGradient(topLine, accent2, accent, 0)
+
+	local iconWrap = create("Frame", {
+		Position = UDim2.fromOffset(20, 18),
+		Size = UDim2.fromOffset(42, 42),
+		BackgroundColor3 = accent,
+		BackgroundTransparency = 0.78,
+		BorderSizePixel = 0,
+		ZIndex = 304,
+		Parent = modal,
+	})
+	addCorner(iconWrap, 13)
+	addStroke(iconWrap, accent, 0.15, 1)
+
+	local iconScale = create("UIScale", {
+		Scale = 0.82,
+		Parent = iconWrap,
+	})
+
+	create("TextLabel", {
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+		Font = Enum.Font.GothamBold,
+		Text = tostring(options.IconText or "?"),
+		TextColor3 = accent2,
+		TextSize = 18,
+		ZIndex = 305,
+		Parent = iconWrap,
+	})
+
+	create("TextLabel", {
+		Position = UDim2.fromOffset(76, 17),
+		Size = UDim2.new(1, -96, 0, 24),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.GothamBold,
+		Text = tostring(options.Title or "Confirmar ação"),
+		TextColor3 = theme.Text,
+		TextSize = 17,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		ZIndex = 304,
+		Parent = modal,
+	})
+
+	create("TextLabel", {
+		Position = UDim2.fromOffset(76, 41),
+		Size = UDim2.new(1, -96, 0, 17),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.Gotham,
+		Text = tostring(options.Subtitle or "Confirmação"),
+		TextColor3 = theme.Muted,
+		TextSize = 10,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ZIndex = 304,
+		Parent = modal,
+	})
+
+	local contentCard = create("Frame", {
+		Position = UDim2.fromOffset(20, 76),
+		Size = UDim2.new(1, -40, 0, 88),
+		BackgroundColor3 = theme.Surface2,
+		BackgroundTransparency = 0.05,
 		BorderSizePixel = 0,
 		ZIndex = 303,
 		Parent = modal,
 	})
-	addCorner(accentTop, 1)
-	addGradient(accentTop, accent2, accent, 0)
+	addCorner(contentCard, 15)
+	addStroke(contentCard, theme.StrokeSoft, 0.22, 1)
 
-	local title = create("TextLabel", {
-		Position = UDim2.fromOffset(20, 19),
-		Size = UDim2.new(1, -40, 0, 27),
-		BackgroundTransparency = 1,
-		Font = Enum.Font.GothamBold,
-		Text = options.Title or "Confirmar",
-		TextColor3 = theme.Text,
-		TextSize = 17,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		ZIndex = 303,
-		Parent = modal,
-	})
-
-	local content = create("TextLabel", {
-		Position = UDim2.fromOffset(20, 56),
-		Size = UDim2.new(1, -40, 0, 76),
+	create("TextLabel", {
+		Position = UDim2.fromOffset(15, 13),
+		Size = UDim2.new(1, -30, 1, -26),
 		BackgroundTransparency = 1,
 		Font = Enum.Font.Gotham,
-		Text = options.Content or "Deseja continuar?",
+		Text = tostring(options.Content or "Deseja continuar?"),
 		TextColor3 = theme.Muted,
 		TextSize = 11,
 		TextWrapped = true,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Top,
+		ZIndex = 304,
+		Parent = contentCard,
+	})
+
+	local separator = create("Frame", {
+		Position = UDim2.new(0, 20, 1, -75),
+		Size = UDim2.new(1, -40, 0, 1),
+		BackgroundColor3 = theme.Stroke,
+		BackgroundTransparency = 0.48,
+		BorderSizePixel = 0,
 		ZIndex = 303,
 		Parent = modal,
 	})
 
 	local actions = create("Frame", {
 		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0, 20, 1, -18),
-		Size = UDim2.new(1, -40, 0, 42),
+		Position = UDim2.new(0, 20, 1, -16),
+		Size = UDim2.new(1, -40, 0, 44),
 		BackgroundTransparency = 1,
 		ZIndex = 303,
 		Parent = modal,
@@ -1755,20 +2052,133 @@ function Window:Confirm(options)
 		Parent = actions,
 	})
 
+	local cancel = create("TextButton", {
+		AutoButtonColor = false,
+		Size = UDim2.fromOffset(116, 42),
+		BackgroundColor3 = theme.Surface3,
+		BorderSizePixel = 0,
+		Font = Enum.Font.GothamBold,
+		Text = tostring(options.CancelText or "Cancelar"),
+		TextColor3 = theme.Text,
+		TextSize = 10,
+		ZIndex = 304,
+		Parent = actions,
+	})
+	addCorner(cancel, 12)
+	local cancelStroke = addStroke(cancel, theme.Stroke, 0.36, 1)
+	local cancelScale = create("UIScale", {
+		Scale = 1,
+		Parent = cancel,
+	})
+
+	local confirm = create("TextButton", {
+		AutoButtonColor = false,
+		Size = UDim2.fromOffset(124, 42),
+		BackgroundColor3 = accent,
+		BorderSizePixel = 0,
+		Font = Enum.Font.GothamBold,
+		Text = tostring(options.ConfirmText or "Confirmar"),
+		TextColor3 = accentText,
+		TextSize = 10,
+		ZIndex = 304,
+		Parent = actions,
+	})
+	addCorner(confirm, 12)
+	local confirmStroke = addStroke(confirm, accent2, 0.08, 1)
+	addGradient(confirm, accent2, accent, 0)
+
+	local confirmScale = create("UIScale", {
+		Scale = 1,
+		Parent = confirm,
+	})
+
 	local closed = false
 
-	local function closeModal()
+	local function animateButton(button, scaleObject, entering, isAccent)
+		if not button or not button.Parent then
+			return
+		end
+
+		tween(
+			scaleObject,
+			0.13,
+			{
+				Scale = entering and 1.035 or 1,
+			},
+			Enum.EasingStyle.Quint
+		)
+
+		if not isAccent then
+			tween(button, 0.13, {
+				BackgroundColor3 = entering and theme.Surface4 or theme.Surface3,
+			})
+		end
+	end
+
+	local function pressButton(scaleObject)
+		tween(
+			scaleObject,
+			0.07,
+			{
+				Scale = 0.96,
+			},
+			Enum.EasingStyle.Quint
+		)
+
+		task.delay(0.075, function()
+			if scaleObject and scaleObject.Parent then
+				tween(
+					scaleObject,
+					0.11,
+					{
+						Scale = 1.035,
+					},
+					Enum.EasingStyle.Back
+				)
+			end
+		end)
+	end
+
+	local function closeModal(callback)
 		if closed then
 			return
 		end
 
 		closed = true
 
-		tween(modalScale, 0.12, {
-			Scale = 0.97,
+		tween(shade, 0.18, {
+			BackgroundTransparency = 1,
 		})
 
-		task.delay(0.13, function()
+		tween(shadow, 0.18, {
+			BackgroundTransparency = 1,
+			Position = UDim2.new(0.5, 0, 0.5, 22),
+		})
+
+		tween(
+			shadowScale,
+			0.18,
+			{
+				Scale = 0.92,
+			},
+			Enum.EasingStyle.Quint
+		)
+
+		tween(modal, 0.18, {
+			BackgroundTransparency = 1,
+			Position = UDim2.new(0.5, 0, 0.5, 24),
+		})
+
+		tween(
+			modalScale,
+			0.18,
+			{
+				Scale = 0.93,
+			},
+			Enum.EasingStyle.Quint
+		)
+
+		task.delay(0.19, function()
 			if self.ModalLayer then
 				self.ModalLayer.Visible = false
 
@@ -1776,91 +2186,96 @@ function Window:Confirm(options)
 					child:Destroy()
 				end
 			end
+
+			safeCallback(callback)
 		end)
 	end
 
-	local cancel = create("TextButton", {
-		AutoButtonColor = false,
-		Size = UDim2.fromOffset(112, 40),
-		BackgroundColor3 = theme.Surface3,
-		BorderSizePixel = 0,
-		Font = Enum.Font.GothamMedium,
-		Text = options.CancelText or "Cancelar",
-		TextColor3 = theme.Text,
-		TextSize = 11,
-		ZIndex = 304,
-		Parent = actions,
-	})
-	addCorner(cancel, 10)
-	addStroke(cancel, theme.Stroke, 0.45, 1)
-
-	local confirm = create("TextButton", {
-		AutoButtonColor = false,
-		Size = UDim2.fromOffset(112, 40),
-		BackgroundColor3 = accent,
-		BorderSizePixel = 0,
-		Font = Enum.Font.GothamBold,
-		Text = options.ConfirmText or "Confirmar",
-		TextColor3 = accentText,
-		TextSize = 11,
-		ZIndex = 304,
-		Parent = actions,
-	})
-	addCorner(confirm, 10)
-
-	local confirmGradient = addGradient(confirm, accent2, accent, 0)
-	addStroke(confirm, accent2, 0.15, 1)
-
 	self.Maid:Give(cancel.MouseEnter:Connect(function()
-		if cancel.Parent then
-			tween(cancel, 0.12, {
-				BackgroundColor3 = theme.Surface4,
-			})
-		end
+		animateButton(cancel, cancelScale, true, false)
+		cancelStroke.Transparency = 0.16
 	end))
 
 	self.Maid:Give(cancel.MouseLeave:Connect(function()
-		if cancel.Parent then
-			tween(cancel, 0.12, {
-				BackgroundColor3 = theme.Surface3,
-			})
-		end
+		animateButton(cancel, cancelScale, false, false)
+		cancelStroke.Transparency = 0.36
 	end))
 
 	self.Maid:Give(confirm.MouseEnter:Connect(function()
-		if confirm.Parent then
-			tween(confirm, 0.12, {
-				BackgroundColor3 = accent2,
-			})
-		end
+		animateButton(confirm, confirmScale, true, true)
+		confirmStroke.Transparency = 0
 	end))
 
 	self.Maid:Give(confirm.MouseLeave:Connect(function()
-		if confirm.Parent then
-			tween(confirm, 0.12, {
-				BackgroundColor3 = accent,
-			})
-		end
+		animateButton(confirm, confirmScale, false, true)
+		confirmStroke.Transparency = 0.08
+	end))
+
+	self.Maid:Give(cancel.MouseButton1Down:Connect(function()
+		pressButton(cancelScale)
+	end))
+
+	self.Maid:Give(confirm.MouseButton1Down:Connect(function()
+		pressButton(confirmScale)
 	end))
 
 	self.Maid:Give(cancel.MouseButton1Click:Connect(function()
-		closeModal()
-		safeCallback(options.OnCancel)
+		closeModal(options.OnCancel)
 	end))
 
 	self.Maid:Give(confirm.MouseButton1Click:Connect(function()
-		closeModal()
-		safeCallback(options.OnConfirm)
+		closeModal(options.OnConfirm)
 	end))
 
 	self.Maid:Give(shade.MouseButton1Click:Connect(function()
-		closeModal()
-		safeCallback(options.OnCancel)
+		closeModal(options.OnCancel)
 	end))
 
-	tween(modalScale, 0.16, {
-		Scale = 1,
+	-- Entrada em camadas.
+	tween(shade, 0.20, {
+		BackgroundTransparency = 0.38,
 	})
+
+	tween(shadow, 0.25, {
+		Position = UDim2.new(0.5, 0, 0.5, 10),
+		BackgroundTransparency = 0.68,
+	})
+
+	tween(
+		shadowScale,
+		0.32,
+		{
+			Scale = 1,
+		},
+		Enum.EasingStyle.Back
+	)
+
+	tween(modal, 0.25, {
+		Position = UDim2.fromScale(0.5, 0.5),
+		BackgroundTransparency = 0.02,
+	})
+
+	tween(
+		modalScale,
+		0.34,
+		{
+			Scale = 1,
+		},
+		Enum.EasingStyle.Back
+	)
+
+	task.delay(0.07, function()
+		if iconScale and iconScale.Parent then
+			tween(
+				iconScale,
+				0.28,
+				{
+					Scale = 1,
+				},
+				Enum.EasingStyle.Back
+			)
+		end
+	end)
 
 	return modal
 end
@@ -1902,7 +2317,14 @@ function Window:CreateTab(options)
 	})
 
 	tab.Button = button
-	addCorner(button, 13)
+	addCorner(button, 14)
+
+	local buttonScale = create("UIScale", {
+		Scale = 1,
+		Parent = button,
+	})
+
+	tab.ButtonScale = buttonScale
 
 	local buttonStroke = addStroke(button, theme.Accent, 1, 1)
 	tab.ButtonStroke = buttonStroke
@@ -2002,6 +2424,15 @@ function Window:CreateTab(options)
 	end)
 
 	tab.Maid:Give(button.MouseEnter:Connect(function()
+		tween(
+			buttonScale,
+			0.15,
+			{
+				Scale = 1.018,
+			},
+			Enum.EasingStyle.Quint
+		)
+
 		if self.ActiveTab ~= tab then
 			tween(button, 0.14, {
 				BackgroundTransparency = 0.55,
@@ -2011,11 +2442,42 @@ function Window:CreateTab(options)
 	end))
 
 	tab.Maid:Give(button.MouseLeave:Connect(function()
+		tween(
+			buttonScale,
+			0.15,
+			{
+				Scale = 1,
+			},
+			Enum.EasingStyle.Quint
+		)
+
 		if self.ActiveTab ~= tab then
 			tween(button, 0.14, {
 				BackgroundTransparency = 1,
 			})
 		end
+	end))
+
+	tab.Maid:Give(button.MouseButton1Down:Connect(function()
+		tween(
+			buttonScale,
+			0.07,
+			{
+				Scale = 0.975,
+			},
+			Enum.EasingStyle.Quint
+		)
+	end))
+
+	tab.Maid:Give(button.MouseButton1Up:Connect(function()
+		tween(
+			buttonScale,
+			0.12,
+			{
+				Scale = 1.018,
+			},
+			Enum.EasingStyle.Back
+		)
 	end))
 
 	tab.Maid:Give(button.MouseButton1Click:Connect(function()
@@ -2111,7 +2573,7 @@ function Tab:CreateSection(options)
 	section.Frame = frame
 
 	if not options.Transparent then
-		addCorner(frame, 15)
+		addCorner(frame, 18)
 		addStroke(frame, theme.Stroke, 0.25, 1)
 	end
 
@@ -2184,8 +2646,55 @@ function Section:_CreateRow(height, searchableText)
 		Parent = self.Frame,
 	})
 
-	addCorner(row, 13)
-	addStroke(row, theme.StrokeSoft, 0.25, 1)
+	addCorner(row, 15)
+
+	local rowStroke = addStroke(
+		row,
+		theme.StrokeSoft,
+		0.25,
+		1
+	)
+
+	local rowScale = create("UIScale", {
+		Scale = 1,
+		Parent = row,
+	})
+
+	self.Window.Maid:Give(row.MouseEnter:Connect(function()
+		tween(row, 0.15, {
+			BackgroundColor3 = theme.Surface3,
+		})
+
+		tween(
+			rowScale,
+			0.16,
+			{
+				Scale = 1.004,
+			},
+			Enum.EasingStyle.Quint
+		)
+
+		rowStroke.Color = self.Window.Theme.Accent
+		rowStroke.Transparency = 0.72
+	end))
+
+	self.Window.Maid:Give(row.MouseLeave:Connect(function()
+		tween(row, 0.15, {
+			BackgroundColor3 = theme.Surface2,
+		})
+
+		tween(
+			rowScale,
+			0.16,
+			{
+				Scale = 1,
+			},
+			Enum.EasingStyle.Quint
+		)
+
+		rowStroke.Color = theme.StrokeSoft
+		rowStroke.Transparency = 0.25
+	end))
 
 	return self:_Track(row, searchableText)
 end
@@ -2369,8 +2878,13 @@ function Section:AddButton(options)
 		Parent = row,
 	})
 
-	addCorner(action, 10)
+	addCorner(action, 12)
 	local actionStroke = addStroke(action, theme.Accent, 0.48, 1)
+
+	local actionScale = create("UIScale", {
+		Scale = 1,
+		Parent = action,
+	})
 
 	self.Window:BindAccent(function(accent)
 		actionStroke.Color = accent
@@ -2380,27 +2894,59 @@ function Section:AddButton(options)
 		tween(action, 0.13, {
 			BackgroundColor3 = theme.Surface3,
 		})
+
+		tween(
+			actionScale,
+			0.14,
+			{
+				Scale = 1.035,
+			},
+			Enum.EasingStyle.Quint
+		)
+
+		actionStroke.Transparency = 0.20
 	end))
 
 	self.Window.Maid:Give(action.MouseLeave:Connect(function()
 		tween(action, 0.13, {
 			BackgroundColor3 = theme.Surface4,
 		})
+
+		tween(
+			actionScale,
+			0.14,
+			{
+				Scale = 1,
+			},
+			Enum.EasingStyle.Quint
+		)
+
+		actionStroke.Transparency = 0.48
+	end))
+
+	self.Window.Maid:Give(action.MouseButton1Down:Connect(function()
+		tween(
+			actionScale,
+			0.07,
+			{
+				Scale = 0.96,
+			},
+			Enum.EasingStyle.Quint
+		)
+	end))
+
+	self.Window.Maid:Give(action.MouseButton1Up:Connect(function()
+		tween(
+			actionScale,
+			0.12,
+			{
+				Scale = 1.035,
+			},
+			Enum.EasingStyle.Back
+		)
 	end))
 
 	self.Window.Maid:Give(action.MouseButton1Click:Connect(function()
-		tween(action, 0.08, {
-			Size = UDim2.fromOffset((options.ButtonWidth or 112) - 4, 36),
-		})
-
-		task.delay(0.08, function()
-			if action and action.Parent then
-				tween(action, 0.1, {
-					Size = UDim2.fromOffset(options.ButtonWidth or 112, 38),
-				})
-			end
-		end)
-
 		safeCallback(options.Callback)
 	end))
 
@@ -2484,7 +3030,44 @@ function Section:AddToggle(options)
 		Parent = row,
 	})
 
+	local switchScale = create("UIScale", {
+		Scale = 1,
+		Parent = switch,
+	})
+
 	local controller = {}
+
+	self.Window.Maid:Give(hit.MouseEnter:Connect(function()
+		tween(
+			switchScale,
+			0.14,
+			{
+				Scale = 1.05,
+			},
+			Enum.EasingStyle.Quint
+		)
+
+		if value then
+			tween(switchGlow, 0.14, {
+				BackgroundTransparency = 0.68,
+			})
+		end
+	end))
+
+	self.Window.Maid:Give(hit.MouseLeave:Connect(function()
+		tween(
+			switchScale,
+			0.14,
+			{
+				Scale = 1,
+			},
+			Enum.EasingStyle.Quint
+		)
+
+		tween(switchGlow, 0.14, {
+			BackgroundTransparency = value and 0.78 or 1,
+		})
+	end))
 
 	local function render()
 		tween(switch, 0.18, {
