@@ -1,8 +1,3 @@
--- AlphaxUI V2
--- Biblioteca de UI original para Roblox/Luau.
--- Visual premium dark + purple, criada do zero.
--- Uso recomendado: ModuleScript + LocalScript.
-
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -13,6 +8,9 @@ local LocalPlayer = Players.LocalPlayer
 
 local AlphaxUI = {}
 local VERSION = "2.0.0"
+
+-- Versão pública fixa desta build.
+AlphaxUI.Version = VERSION
 
 --// ============================================================
 --// THEMES
@@ -3563,6 +3561,16 @@ function Section:AddSegmented(options)
 
 	self.Window:_RegisterControl(options.Id, controller)
 	return controller
+end
+
+
+-- Retorna as funcionalidades públicas garantidas nesta build.
+function AlphaxUI:GetBuildInfo()
+	return {
+		Name = "AlphaxUI",
+		Version = VERSION,
+		Channel = "stable",
+	}
 end
 
 return AlphaxUI
