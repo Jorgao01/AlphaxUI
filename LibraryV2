@@ -1,10 +1,10 @@
-local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
+local TextService = game:GetService("TextService")
 local Lighting = game:GetService("Lighting")
-
-local LocalPlayer = Players.LocalPlayer
+local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
 
 local AlphaxUI = {}
 local VERSION = "2.0.0"
@@ -268,12 +268,62 @@ local function tableToColor(value)
 	return nil
 end
 
-local function getPlayerGui()
-	if not LocalPlayer then
-		LocalPlayer = Players.PlayerAdded:Wait()
+-- Retorna o melhor parent possível para UI de executor.
+-- Prioridade: gethui() -> CoreGui -> PlayerGui apenas como fallback final.
+local function getExecutorUIParent()
+	local okHui, hui = pcall(function()
+		if type(gethui) == "function" then
+			return gethui()
+		end
+	end)
+
+	if okHui and typeof(hui) == "Instance" then
+		return hui
 	end
 
-	return LocalPlayer:WaitForChild("PlayerGui")
+	local core = CoreGui
+
+	pcall(function()
+		if type(cloneref) == "function" then
+			core = cloneref(CoreGui)
+		end
+	end)
+
+	if typeof(core) == "Instance" then
+		return core
+	end
+
+	-- Fallback de compatibilidade para executores muito limitados.
+	local localPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
+	return localPlayer:WaitForChild("PlayerGui")
+end
+
+local function protectExecutorGui(gui)
+	-- Não é obrigatório; apenas usa a proteção nativa do ambiente quando existe.
+	pcall(function()
+		if type(protectgui) == "function" then
+			protectgui(gui)
+			return
+		end
+
+		if syn and type(syn.protect_gui) == "function" then
+			syn.protect_gui(gui)
+		end
+	end)
+end
+
+local function getContrastTextColor(color)
+	-- Luminância aproximada para manter texto legível em accents claras/escuras.
+	local luminance =
+		(color.R * 0.299)
+		+ (color.G * 0.587)
+		+ (color.B * 0.114)
+
+	if luminance > 0.66 then
+		return Color3.fromRGB(18, 20, 30)
+	end
+
+	return Color3.fromRGB(255, 255, 255)
 end
 
 --// ============================================================
@@ -445,7 +495,7 @@ function AlphaxUI:CreateWindow(options)
 		78
 	)
 
-	local parent = options.Parent or getPlayerGui()
+	local parent = options.Parent or getExecutorUIParent()
 	local guiName = options.GuiName or "AlphaxUI"
 
 	if options.DestroyExisting ~= false then
@@ -461,8 +511,10 @@ function AlphaxUI:CreateWindow(options)
 		IgnoreGuiInset = true,
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 		DisplayOrder = options.DisplayOrder or 100,
-		Parent = parent,
 	})
+
+	protectExecutorGui(screen)
+	screen.Parent = parent
 
 	self.Gui = screen
 	self.Maid:Give(screen)
@@ -783,17 +835,29 @@ function AlphaxUI:CreateWindow(options)
 	addCorner(searchWrap, 13)
 	addStroke(searchWrap, theme.Stroke, 0.35, 1)
 
-	create("TextLabel", {
+	-- Ícone de busca desenhado com Frames para não depender de glyph Unicode.
+	local searchIcon = create("Frame", {
+		Position = UDim2.fromOffset(16, 16),
+		Size = UDim2.fromOffset(17, 17),
 		BackgroundTransparency = 1,
-		Position = UDim2.fromOffset(14, 0),
-		Size = UDim2.fromOffset(28, 52),
-		Font = Enum.Font.Gotham,
-		Text = "⌕",
-		TextColor3 = theme.Text,
-		TextSize = 23,
+		BorderSizePixel = 0,
 		ZIndex = 6,
 		Parent = searchWrap,
 	})
+	addCorner(searchIcon, 9)
+	addStroke(searchIcon, theme.Text, 0.08, 2)
+
+	local searchHandle = create("Frame", {
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.fromOffset(13, 16),
+		Size = UDim2.fromOffset(8, 2),
+		Rotation = 45,
+		BackgroundColor3 = theme.Text,
+		BorderSizePixel = 0,
+		ZIndex = 6,
+		Parent = searchWrap,
+	})
+	addCorner(searchHandle, 1)
 
 	local searchBox = create("TextBox", {
 		Name = "Search",
@@ -935,9 +999,10 @@ function AlphaxUI:CreateWindow(options)
 	local notificationHolder = create("Frame", {
 		Name = "Notifications",
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -18, 0, 18),
-		Size = UDim2.fromOffset(340, 600),
+		Position = UDim2.new(1, -14, 0, 14),
+		Size = UDim2.new(0, 330, 1, -28),
 		BackgroundTransparency = 1,
+		ClipsDescendants = false,
 		ZIndex = 200,
 		Parent = screen,
 	})
@@ -999,7 +1064,7 @@ function AlphaxUI:CreateWindow(options)
 
 			local viewport = camera.ViewportSize
 
-			if viewport.X <= 760 or viewport.Y <= 520 then
+			if viewport.X <= 820 or viewport.Y <= 560 then
 				self.MobileMode = true
 
 				if not self.Minimized then
@@ -1449,60 +1514,85 @@ function Window:Notify(options)
 	options = options or {}
 
 	local theme = self.Theme
-	local duration = tonumber(options.Duration) or 4
+	local duration = math.max(0.5, tonumber(options.Duration) or 4)
 	local accent = tableToColor(options.Color) or options.Color or theme.Accent
+
+	if typeof(accent) ~= "Color3" then
+		accent = theme.Accent
+	end
+
+	local titleText = tostring(options.Title or "Alphax")
+	local contentText = tostring(options.Content or "")
+
+	local cardWidth = 326
+	local textWidth = cardWidth - 42
+
+	local contentHeight = 16
+	local okMeasure, measured = pcall(function()
+		return TextService:GetTextSize(
+			contentText,
+			11,
+			Enum.Font.Gotham,
+			Vector2.new(textWidth, 500)
+		)
+	end)
+
+	if okMeasure and measured then
+		contentHeight = math.max(16, math.ceil(measured.Y))
+	end
+
+	local cardHeight = 14 + 20 + 5 + contentHeight + 14
+	cardHeight = math.clamp(cardHeight, 69, 150)
 
 	local card = create("Frame", {
 		Name = "Notification",
-		Size = UDim2.fromOffset(330, 0),
-		AutomaticSize = Enum.AutomaticSize.Y,
+		Size = UDim2.fromOffset(cardWidth, cardHeight),
 		BackgroundColor3 = theme.Surface,
 		BorderSizePixel = 0,
-		BackgroundTransparency = 0.02,
+		BackgroundTransparency = 1,
 		ZIndex = 205,
 		Parent = self.NotificationHolder,
 	})
 
 	addCorner(card, 13)
 	addStroke(card, theme.Stroke, 0.25, 1)
-	addPadding(card, 16, 16, 14, 14)
 
-	create("UIListLayout", {
-		Padding = UDim.new(0, 5),
-		SortOrder = Enum.SortOrder.LayoutOrder,
-		Parent = card,
-	})
-
+	-- A linha fica FORA de qualquer UIListLayout.
+	-- Isto elimina o bug de altura infinita que aparecia em alguns executores.
 	local accentLine = create("Frame", {
-		Position = UDim2.fromOffset(-16, 0),
-		Size = UDim2.new(0, 3, 1, 0),
+		Position = UDim2.fromOffset(0, 10),
+		Size = UDim2.new(0, 3, 1, -20),
 		BackgroundColor3 = accent,
 		BorderSizePixel = 0,
-		ZIndex = 206,
+		ZIndex = 207,
 		Parent = card,
 	})
 	addCorner(accentLine, 2)
 
-	create("TextLabel", {
-		Size = UDim2.new(1, 0, 0, 20),
+	local title = create("TextLabel", {
+		Position = UDim2.fromOffset(16, 12),
+		Size = UDim2.new(1, -32, 0, 20),
 		BackgroundTransparency = 1,
 		Font = Enum.Font.GothamBold,
-		Text = options.Title or "Alphax",
+		Text = titleText,
 		TextColor3 = theme.Text,
 		TextSize = 13,
+		TextTransparency = 1,
 		TextXAlignment = Enum.TextXAlignment.Left,
+		TextTruncate = Enum.TextTruncate.AtEnd,
 		ZIndex = 206,
 		Parent = card,
 	})
 
-	create("TextLabel", {
-		Size = UDim2.new(1, 0, 0, 0),
-		AutomaticSize = Enum.AutomaticSize.Y,
+	local content = create("TextLabel", {
+		Position = UDim2.fromOffset(16, 37),
+		Size = UDim2.new(1, -32, 0, contentHeight),
 		BackgroundTransparency = 1,
 		Font = Enum.Font.Gotham,
-		Text = options.Content or "",
+		Text = contentText,
 		TextColor3 = theme.Muted,
 		TextSize = 11,
+		TextTransparency = 1,
 		TextWrapped = true,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Top,
@@ -1510,47 +1600,49 @@ function Window:Notify(options)
 		Parent = card,
 	})
 
-	card.Position = UDim2.fromOffset(30, 0)
-	card.BackgroundTransparency = 1
+	local scale = create("UIScale", {
+		Scale = 0.97,
+		Parent = card,
+	})
 
-	for _, descendant in ipairs(card:GetDescendants()) do
-		if descendant:IsA("TextLabel") then
-			descendant.TextTransparency = 1
-		end
-	end
-
-	tween(card, 0.22, {
-		Position = UDim2.fromOffset(0, 0),
+	tween(card, 0.18, {
 		BackgroundTransparency = 0.02,
 	})
 
-	for _, descendant in ipairs(card:GetDescendants()) do
-		if descendant:IsA("TextLabel") then
-			tween(descendant, 0.22, {
-				TextTransparency = 0,
-			})
-		end
-	end
+	tween(title, 0.18, {
+		TextTransparency = 0,
+	})
+
+	tween(content, 0.18, {
+		TextTransparency = 0,
+	})
+
+	tween(scale, 0.18, {
+		Scale = 1,
+	})
 
 	task.delay(duration, function()
 		if not card or not card.Parent then
 			return
 		end
 
-		tween(card, 0.18, {
-			Position = UDim2.fromOffset(28, 0),
+		tween(card, 0.16, {
 			BackgroundTransparency = 1,
 		})
 
-		for _, descendant in ipairs(card:GetDescendants()) do
-			if descendant:IsA("TextLabel") then
-				tween(descendant, 0.16, {
-					TextTransparency = 1,
-				})
-			end
-		end
+		tween(title, 0.14, {
+			TextTransparency = 1,
+		})
 
-		task.delay(0.2, function()
+		tween(content, 0.14, {
+			TextTransparency = 1,
+		})
+
+		tween(scale, 0.16, {
+			Scale = 0.97,
+		})
+
+		task.delay(0.18, function()
 			if card and card.Parent then
 				card:Destroy()
 			end
@@ -1564,6 +1656,10 @@ function Window:Confirm(options)
 	options = options or {}
 
 	local theme = self.Theme
+	local accent = theme.Accent
+	local accent2 = theme.Accent2
+	local accentText = getContrastTextColor(accent)
+
 	self:_ClosePopup()
 
 	self.ModalLayer.Visible = true
@@ -1579,6 +1675,7 @@ function Window:Confirm(options)
 		BackgroundTransparency = 0.42,
 		BorderSizePixel = 0,
 		Text = "",
+		Modal = true,
 		ZIndex = 301,
 		Parent = self.ModalLayer,
 	})
@@ -1586,7 +1683,7 @@ function Window:Confirm(options)
 	local modal = create("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(390, 210),
+		Size = UDim2.fromOffset(410, 218),
 		BackgroundColor3 = theme.Surface,
 		BorderSizePixel = 0,
 		ZIndex = 302,
@@ -1594,29 +1691,46 @@ function Window:Confirm(options)
 	})
 
 	addCorner(modal, 16)
-	addStroke(modal, theme.Accent, 0.28, 1)
-	addPadding(modal, 20, 20, 18, 18)
+	addStroke(modal, accent, 0.22, 1)
+
+	local modalScale = create("UIScale", {
+		Scale = 0.97,
+		Parent = modal,
+	})
+
+	local accentTop = create("Frame", {
+		Size = UDim2.new(1, -24, 0, 2),
+		Position = UDim2.fromOffset(12, 0),
+		BackgroundColor3 = accent,
+		BackgroundTransparency = 0.10,
+		BorderSizePixel = 0,
+		ZIndex = 303,
+		Parent = modal,
+	})
+	addCorner(accentTop, 1)
+	addGradient(accentTop, accent2, accent, 0)
 
 	local title = create("TextLabel", {
-		Size = UDim2.new(1, 0, 0, 28),
+		Position = UDim2.fromOffset(20, 19),
+		Size = UDim2.new(1, -40, 0, 27),
 		BackgroundTransparency = 1,
 		Font = Enum.Font.GothamBold,
 		Text = options.Title or "Confirmar",
 		TextColor3 = theme.Text,
-		TextSize = 18,
+		TextSize = 17,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		ZIndex = 303,
 		Parent = modal,
 	})
 
 	local content = create("TextLabel", {
-		Position = UDim2.fromOffset(0, 38),
-		Size = UDim2.new(1, 0, 0, 72),
+		Position = UDim2.fromOffset(20, 56),
+		Size = UDim2.new(1, -40, 0, 76),
 		BackgroundTransparency = 1,
 		Font = Enum.Font.Gotham,
 		Text = options.Content or "Deseja continuar?",
 		TextColor3 = theme.Muted,
-		TextSize = 12,
+		TextSize = 11,
 		TextWrapped = true,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Top,
@@ -1626,8 +1740,8 @@ function Window:Confirm(options)
 
 	local actions = create("Frame", {
 		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0, 0, 1, 0),
-		Size = UDim2.new(1, 0, 0, 44),
+		Position = UDim2.new(0, 20, 1, -18),
+		Size = UDim2.new(1, -40, 0, 42),
 		BackgroundTransparency = 1,
 		ZIndex = 303,
 		Parent = modal,
@@ -1641,16 +1755,33 @@ function Window:Confirm(options)
 		Parent = actions,
 	})
 
+	local closed = false
+
 	local function closeModal()
-		self.ModalLayer.Visible = false
-		for _, child in ipairs(self.ModalLayer:GetChildren()) do
-			child:Destroy()
+		if closed then
+			return
 		end
+
+		closed = true
+
+		tween(modalScale, 0.12, {
+			Scale = 0.97,
+		})
+
+		task.delay(0.13, function()
+			if self.ModalLayer then
+				self.ModalLayer.Visible = false
+
+				for _, child in ipairs(self.ModalLayer:GetChildren()) do
+					child:Destroy()
+				end
+			end
+		end)
 	end
 
 	local cancel = create("TextButton", {
 		AutoButtonColor = false,
-		Size = UDim2.fromOffset(110, 40),
+		Size = UDim2.fromOffset(112, 40),
 		BackgroundColor3 = theme.Surface3,
 		BorderSizePixel = 0,
 		Font = Enum.Font.GothamMedium,
@@ -1661,44 +1792,79 @@ function Window:Confirm(options)
 		Parent = actions,
 	})
 	addCorner(cancel, 10)
+	addStroke(cancel, theme.Stroke, 0.45, 1)
 
 	local confirm = create("TextButton", {
 		AutoButtonColor = false,
-		Size = UDim2.fromOffset(110, 40),
-		BackgroundColor3 = theme.Accent,
+		Size = UDim2.fromOffset(112, 40),
+		BackgroundColor3 = accent,
 		BorderSizePixel = 0,
 		Font = Enum.Font.GothamBold,
 		Text = options.ConfirmText or "Confirmar",
-		TextColor3 = Color3.fromRGB(255, 255, 255),
+		TextColor3 = accentText,
 		TextSize = 11,
 		ZIndex = 304,
 		Parent = actions,
 	})
 	addCorner(confirm, 10)
 
-	self:BindAccent(function(accent)
-		if confirm and confirm.Parent then
-			confirm.BackgroundColor3 = accent
-		end
-	end)
+	local confirmGradient = addGradient(confirm, accent2, accent, 0)
+	addStroke(confirm, accent2, 0.15, 1)
 
-	cancel.MouseButton1Click:Connect(function()
+	self.Maid:Give(cancel.MouseEnter:Connect(function()
+		if cancel.Parent then
+			tween(cancel, 0.12, {
+				BackgroundColor3 = theme.Surface4,
+			})
+		end
+	end))
+
+	self.Maid:Give(cancel.MouseLeave:Connect(function()
+		if cancel.Parent then
+			tween(cancel, 0.12, {
+				BackgroundColor3 = theme.Surface3,
+			})
+		end
+	end))
+
+	self.Maid:Give(confirm.MouseEnter:Connect(function()
+		if confirm.Parent then
+			tween(confirm, 0.12, {
+				BackgroundColor3 = accent2,
+			})
+		end
+	end))
+
+	self.Maid:Give(confirm.MouseLeave:Connect(function()
+		if confirm.Parent then
+			tween(confirm, 0.12, {
+				BackgroundColor3 = accent,
+			})
+		end
+	end))
+
+	self.Maid:Give(cancel.MouseButton1Click:Connect(function()
 		closeModal()
 		safeCallback(options.OnCancel)
-	end)
+	end))
 
-	confirm.MouseButton1Click:Connect(function()
+	self.Maid:Give(confirm.MouseButton1Click:Connect(function()
 		closeModal()
 		safeCallback(options.OnConfirm)
-	end)
+	end))
 
-	shade.MouseButton1Click:Connect(function()
+	self.Maid:Give(shade.MouseButton1Click:Connect(function()
 		closeModal()
 		safeCallback(options.OnCancel)
-	end)
+	end))
+
+	tween(modalScale, 0.16, {
+		Scale = 1,
+	})
 
 	return modal
 end
+
 
 --// ============================================================
 --// TABS
@@ -3570,6 +3736,7 @@ function AlphaxUI:GetBuildInfo()
 		Name = "AlphaxUI",
 		Version = VERSION,
 		Channel = "stable",
+		Target = "executor",
 	}
 end
 
