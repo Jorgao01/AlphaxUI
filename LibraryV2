@@ -331,6 +331,203 @@ local function getContrastTextColor(color)
 	return Color3.fromRGB(255, 255, 255)
 end
 
+
+--// ============================================================
+--// VECTOR ICONS
+--// Desenhados com Frames/UIStroke para evitar quadradinhos
+--// causados por glyphs Unicode ausentes em alguns executores.
+--// ============================================================
+
+local function markIconPart(instance)
+	instance:SetAttribute("AlphaxIconPart", true)
+	return instance
+end
+
+local function setVectorIconColor(holder, color)
+	if not holder then
+		return
+	end
+
+	for _, object in ipairs(holder:GetDescendants()) do
+		if object:GetAttribute("AlphaxIconPart") then
+			if object:IsA("Frame") then
+				object.BackgroundColor3 = color
+			elseif object:IsA("UIStroke") then
+				object.Color = color
+			end
+		end
+	end
+end
+
+local function iconLine(parent, position, size, rotation, color, zIndex, radius)
+	local line = markIconPart(create("Frame", {
+		Position = position,
+		Size = size,
+		Rotation = rotation or 0,
+		BackgroundColor3 = color,
+		BorderSizePixel = 0,
+		ZIndex = zIndex or 2,
+		Parent = parent,
+	}))
+
+	addCorner(line, radius or 2)
+	return line
+end
+
+local function createVectorIcon(parent, iconName, color, zIndex)
+	local holder = create("Frame", {
+		Name = "VectorIcon",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ZIndex = zIndex or 2,
+		Parent = parent,
+	})
+
+	iconName = string.lower(tostring(iconName or "diamond"))
+	color = color or Color3.new(1, 1, 1)
+	zIndex = zIndex or 2
+
+	if iconName == "home" or iconName == "diamond" or iconName == "visual" then
+		local diamond = markIconPart(create("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromOffset(iconName == "visual" and 9 or 8, iconName == "visual" and 9 or 8),
+			Rotation = 45,
+			BackgroundColor3 = color,
+			BorderSizePixel = 0,
+			ZIndex = zIndex + 1,
+			Parent = holder,
+		}))
+		addCorner(diamond, 2)
+
+		if iconName == "visual" then
+			iconLine(holder, UDim2.new(0.5, 6, 0.5, -8), UDim2.fromOffset(2, 6), 0, color, zIndex + 1, 1)
+			iconLine(holder, UDim2.new(0.5, 4, 0.5, -6), UDim2.fromOffset(6, 2), 0, color, zIndex + 1, 1)
+		end
+
+	elseif iconName == "controls" or iconName == "circle" then
+		local ring = create("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromOffset(13, 13),
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			ZIndex = zIndex + 1,
+			Parent = holder,
+		})
+		addCorner(ring, 7)
+		markIconPart(addStroke(ring, color, 0, 2))
+
+		local dot = markIconPart(create("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromOffset(4, 4),
+			BackgroundColor3 = color,
+			BorderSizePixel = 0,
+			ZIndex = zIndex + 2,
+			Parent = holder,
+		}))
+		addCorner(dot, 2)
+
+	elseif iconName == "inputs" or iconName == "menu" then
+		local ys = {0.32, 0.50, 0.68}
+		for _, y in ipairs(ys) do
+			iconLine(
+				holder,
+				UDim2.new(0.5, -7, y, -1),
+				UDim2.fromOffset(14, 2),
+				0,
+				color,
+				zIndex + 1,
+				1
+			)
+		end
+
+	elseif iconName == "config" or iconName == "settings" then
+		local ring = create("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromOffset(11, 11),
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			ZIndex = zIndex + 1,
+			Parent = holder,
+		})
+		addCorner(ring, 6)
+		markIconPart(addStroke(ring, color, 0, 2))
+
+		for index = 0, 3 do
+			local rotation = index * 45
+			iconLine(
+				holder,
+				UDim2.new(0.5, -1, 0.5, -9),
+				UDim2.fromOffset(2, 5),
+				rotation,
+				color,
+				zIndex + 1,
+				1
+			)
+		end
+
+	elseif iconName == "chevron" or iconName == "down" then
+		iconLine(holder, UDim2.new(0.5, -7, 0.5, -1), UDim2.fromOffset(9, 2), 45, color, zIndex + 1, 1)
+		iconLine(holder, UDim2.new(0.5, -1, 0.5, -1), UDim2.fromOffset(9, 2), -45, color, zIndex + 1, 1)
+
+	elseif iconName == "close" then
+		iconLine(holder, UDim2.new(0.5, -7, 0.5, -1), UDim2.fromOffset(14, 2), 45, color, zIndex + 1, 1)
+		iconLine(holder, UDim2.new(0.5, -7, 0.5, -1), UDim2.fromOffset(14, 2), -45, color, zIndex + 1, 1)
+
+	elseif iconName == "minimize" then
+		iconLine(holder, UDim2.new(0.5, -7, 0.5, -1), UDim2.fromOffset(14, 2), 0, color, zIndex + 1, 1)
+
+	else
+		-- Fallback seguro: ponto circular, sem texto Unicode.
+		local dot = markIconPart(create("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromOffset(6, 6),
+			BackgroundColor3 = color,
+			BorderSizePixel = 0,
+			ZIndex = zIndex + 1,
+			Parent = holder,
+		}))
+		addCorner(dot, 3)
+	end
+
+	return holder
+end
+
+local function colorToHex(color)
+	local rgb = colorToTable(color)
+	return string.format("#%02X%02X%02X", rgb.R, rgb.G, rgb.B)
+end
+
+local function hexToColor(text)
+	text = tostring(text or ""):gsub("#", ""):gsub("%s+", "")
+
+	if #text == 3 then
+		text =
+			text:sub(1, 1) .. text:sub(1, 1)
+			.. text:sub(2, 2) .. text:sub(2, 2)
+			.. text:sub(3, 3) .. text:sub(3, 3)
+	end
+
+	if #text ~= 6 or not text:match("^[%x]+$") then
+		return nil
+	end
+
+	local r = tonumber(text:sub(1, 2), 16)
+	local g = tonumber(text:sub(3, 4), 16)
+	local b = tonumber(text:sub(5, 6), 16)
+
+	if not r or not g or not b then
+		return nil
+	end
+
+	return Color3.fromRGB(r, g, b)
+end
+
 --// ============================================================
 --// MAID
 --// ============================================================
@@ -574,6 +771,12 @@ function AlphaxUI:CreateWindow(options)
 	self.Minimized = false
 	self.Destroyed = false
 
+	-- Evita spam de abrir/fechar e conflitos com animações.
+	self.VisibilityTransitionLocked = false
+	self.VisibilityCooldown = math.max(0.5, tonumber(options.VisibilityCooldown) or 0.5)
+	self.CapturingKeybind = false
+	self.Closing = false
+
 	self.ToggleKey = options.ToggleKey or Enum.KeyCode.RightShift
 	self.ExpandedSize = options.Size or UDim2.fromOffset(920, 590)
 	self.MinimizedSize = UDim2.new(
@@ -623,11 +826,13 @@ function AlphaxUI:CreateWindow(options)
 	end
 
 	if options.DimBackground ~= false then
+		self.DimTransparency = options.DimTransparency or 0.72
+
 		local dim = create("Frame", {
 			Name = "Dim",
 			Size = UDim2.fromScale(1, 1),
 			BackgroundColor3 = Color3.new(0, 0, 0),
-			BackgroundTransparency = options.DimTransparency or 0.72,
+			BackgroundTransparency = self.DimTransparency,
 			BorderSizePixel = 0,
 			ZIndex = 0,
 			Parent = screen,
@@ -750,16 +955,23 @@ function AlphaxUI:CreateWindow(options)
 		Size = UDim2.fromOffset(40, 40),
 		BackgroundColor3 = theme.Surface,
 		BorderSizePixel = 0,
-		Font = Enum.Font.GothamBold,
-		Text = "≡",
-		TextColor3 = theme.Text,
-		TextSize = 18,
+		Text = "",
 		Visible = false,
 		ZIndex = 8,
 		Parent = topbar,
 	})
 	addCorner(mobileMenuButton, 12)
 	addStroke(mobileMenuButton, theme.Stroke, 0.30, 1)
+
+	local mobileMenuIconHost = create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(22, 22),
+		BackgroundTransparency = 1,
+		ZIndex = 9,
+		Parent = mobileMenuButton,
+	})
+	createVectorIcon(mobileMenuIconHost, "menu", theme.Text, 9)
 
 	self.MobileMenuButton = mobileMenuButton
 
@@ -863,33 +1075,70 @@ function AlphaxUI:CreateWindow(options)
 		Parent = windowControls,
 	})
 
-	local function createWindowButton(symbol, callback)
+	local function createWindowButton(iconName, callback)
 		local button = create("TextButton", {
 			AutoButtonColor = false,
 			Size = UDim2.fromOffset(38, 38),
 			BackgroundColor3 = theme.Surface,
 			BorderSizePixel = 0,
-			Font = Enum.Font.GothamBold,
-			Text = symbol,
-			TextColor3 = theme.Text,
-			TextSize = symbol == "×" and 18 or 16,
+			Text = "",
 			ZIndex = 5,
 			Parent = windowControls,
 		})
 
 		addCorner(button, 13)
-		addStroke(button, theme.Stroke, 0.35, 1)
+		local buttonStroke = addStroke(button, theme.Stroke, 0.35, 1)
+
+		local iconHost = create("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromOffset(20, 20),
+			BackgroundTransparency = 1,
+			ZIndex = 6,
+			Parent = button,
+		})
+
+		local icon = createVectorIcon(iconHost, iconName, theme.Text, 6)
+
+		local scale = create("UIScale", {
+			Scale = 1,
+			Parent = button,
+		})
 
 		self.Maid:Give(button.MouseEnter:Connect(function()
 			tween(button, 0.14, {
 				BackgroundColor3 = theme.Surface3,
 			})
+
+			tween(scale, 0.14, {
+				Scale = 1.06,
+			})
+
+			buttonStroke.Transparency = 0.18
 		end))
 
 		self.Maid:Give(button.MouseLeave:Connect(function()
 			tween(button, 0.14, {
 				BackgroundColor3 = theme.Surface,
 			})
+
+			tween(scale, 0.14, {
+				Scale = 1,
+			})
+
+			buttonStroke.Transparency = 0.35
+		end))
+
+		self.Maid:Give(button.MouseButton1Down:Connect(function()
+			tween(scale, 0.07, {
+				Scale = 0.92,
+			})
+		end))
+
+		self.Maid:Give(button.MouseButton1Up:Connect(function()
+			tween(scale, 0.11, {
+				Scale = 1.06,
+			}, Enum.EasingStyle.Back)
 		end))
 
 		self.Maid:Give(button.MouseButton1Click:Connect(callback))
@@ -897,12 +1146,15 @@ function AlphaxUI:CreateWindow(options)
 		return button
 	end
 
-	createWindowButton("–", function()
+	createWindowButton("minimize", function()
+		if self.VisibilityTransitionLocked then
+			return
+		end
 		self:SetMinimized(not self.Minimized)
 	end)
 
-	createWindowButton("×", function()
-		self:Destroy()
+	createWindowButton("close", function()
+		self:Close()
 	end)
 
 	-- Body
@@ -1209,6 +1461,11 @@ function AlphaxUI:CreateWindow(options)
 			return
 		end
 
+		-- Ao capturar uma nova keybind, nenhuma tecla pode esconder a UI.
+		if self.CapturingKeybind then
+			return
+		end
+
 		if input.KeyCode == self.ToggleKey then
 			self:Toggle()
 			return
@@ -1396,7 +1653,7 @@ function AlphaxUI:CreateWindow(options)
 		originalPosition.Y.Offset + 14
 	)
 
-	root.BackgroundTransparency = 1
+	root.GroupTransparency = 1
 
 	tween(
 		chrome,
@@ -1421,8 +1678,8 @@ function AlphaxUI:CreateWindow(options)
 		Enum.EasingStyle.Back
 	)
 
-	tween(root, 0.22, {
-		BackgroundTransparency = 0,
+	tween(root, 0.24, {
+		GroupTransparency = 0,
 	})
 
 	return self
@@ -1640,21 +1897,275 @@ function Window:SetMinimized(state)
 	end
 end
 
-function Window:SetVisible(state)
-	if self.Destroyed then
-		return
+function Window:_AcquireVisibilityLock()
+	if self.Destroyed or self.VisibilityTransitionLocked then
+		return false
 	end
 
-	self.Visible = state == true
-	self.Gui.Enabled = self.Visible
+	self.VisibilityTransitionLocked = true
 
-	if self.BlurEffect then
-		self.BlurEffect.Enabled = self.Visible
+	task.delay(self.VisibilityCooldown, function()
+		if not self.Destroyed then
+			self.VisibilityTransitionLocked = false
+		end
+	end)
+
+	return true
+end
+
+function Window:SetVisible(state, force)
+	if self.Destroyed or self.Closing then
+		return false
 	end
+
+	state = state == true
+
+	if state == self.Visible and not force then
+		return false
+	end
+
+	if not force and not self:_AcquireVisibilityLock() then
+		return false
+	end
+
+	self.Visible = state
+
+	local root = self.Root
+	local chrome = self.Chrome
+	local scale = self.WindowScale
+	local dim = self.Dim
+	local blur = self.BlurEffect
+
+	if state then
+		self.Gui.Enabled = true
+
+		local safePosition = clampWindowPosition(
+			chrome,
+			chrome.Position,
+			chrome.Size,
+			self.MobileMode and 6 or 10
+		)
+
+		chrome.Position = UDim2.new(
+			safePosition.X.Scale,
+			safePosition.X.Offset,
+			safePosition.Y.Scale,
+			safePosition.Y.Offset + 12
+		)
+
+		if root and root:IsA("CanvasGroup") then
+			root.GroupTransparency = 1
+		end
+
+		if scale then
+			scale.Scale = 0.92
+		end
+
+		if dim then
+			dim.BackgroundTransparency = 1
+		end
+
+		if blur then
+			blur.Enabled = true
+			blur.Size = 0
+		end
+
+		tween(
+			chrome,
+			0.30,
+			{Position = safePosition},
+			Enum.EasingStyle.Quint
+		)
+
+		if scale then
+			tween(
+				scale,
+				0.36,
+				{Scale = 1},
+				Enum.EasingStyle.Back
+			)
+		end
+
+		if root and root:IsA("CanvasGroup") then
+			tween(root, 0.26, {
+				GroupTransparency = 0,
+			})
+		end
+
+		if dim then
+			tween(dim, 0.28, {
+				BackgroundTransparency = self.DimTransparency or 0.72,
+			})
+		end
+
+		if blur then
+			tween(blur, 0.30, {
+				Size = 6,
+			})
+		end
+
+	else
+		self:_ClosePopup()
+
+		if self.MobileMode then
+			self:SetMobileSidebar(false)
+		end
+
+		if root and root:IsA("CanvasGroup") then
+			tween(root, 0.25, {
+				GroupTransparency = 1,
+			})
+		end
+
+		if scale then
+			tween(
+				scale,
+				0.27,
+				{Scale = 0.92},
+				Enum.EasingStyle.Back,
+				Enum.EasingDirection.In
+			)
+		end
+
+		tween(
+			chrome,
+			0.26,
+			{
+				Position = UDim2.new(
+					chrome.Position.X.Scale,
+					chrome.Position.X.Offset,
+					chrome.Position.Y.Scale,
+					chrome.Position.Y.Offset + 12
+				),
+			},
+			Enum.EasingStyle.Quint,
+			Enum.EasingDirection.In
+		)
+
+		if dim then
+			tween(dim, 0.24, {
+				BackgroundTransparency = 1,
+			})
+		end
+
+		if blur then
+			tween(blur, 0.25, {
+				Size = 0,
+			})
+		end
+
+		task.delay(0.29, function()
+			if not self.Destroyed and not self.Visible then
+				self.Gui.Enabled = false
+
+				-- Reposiciona internamente sem mostrar, para a próxima abertura.
+				local current = clampWindowPosition(
+					chrome,
+					chrome.Position,
+					chrome.Size,
+					self.MobileMode and 6 or 10
+				)
+
+				chrome.Position = UDim2.new(
+					current.X.Scale,
+					current.X.Offset,
+					current.Y.Scale,
+					current.Y.Offset - 12
+				)
+			end
+		end)
+	end
+
+	return true
 end
 
 function Window:Toggle()
-	self:SetVisible(not self.Visible)
+	if self.Destroyed or self.Closing then
+		return false
+	end
+
+	return self:SetVisible(not self.Visible)
+end
+
+function Window:Close()
+	if self.Destroyed or self.Closing then
+		return false
+	end
+
+	if not self:_AcquireVisibilityLock() then
+		return false
+	end
+
+	self.Closing = true
+	self.Visible = false
+	self:_ClosePopup()
+
+	if self.MobileMode then
+		self:SetMobileSidebar(false)
+	end
+
+	local root = self.Root
+	local chrome = self.Chrome
+	local scale = self.WindowScale
+	local dim = self.Dim
+	local blur = self.BlurEffect
+
+	if root and root:IsA("CanvasGroup") then
+		tween(
+			root,
+			0.28,
+			{GroupTransparency = 1},
+			Enum.EasingStyle.Quint,
+			Enum.EasingDirection.In
+		)
+	end
+
+	if scale then
+		tween(
+			scale,
+			0.30,
+			{Scale = 0.82},
+			Enum.EasingStyle.Back,
+			Enum.EasingDirection.In
+		)
+	end
+
+	if chrome then
+		tween(
+			chrome,
+			0.30,
+			{
+				Position = UDim2.new(
+					chrome.Position.X.Scale,
+					chrome.Position.X.Offset,
+					chrome.Position.Y.Scale,
+					chrome.Position.Y.Offset + 18
+				),
+			},
+			Enum.EasingStyle.Quint,
+			Enum.EasingDirection.In
+		)
+	end
+
+	if dim then
+		tween(dim, 0.28, {
+			BackgroundTransparency = 1,
+		})
+	end
+
+	if blur then
+		tween(blur, 0.28, {
+			Size = 0,
+		})
+	end
+
+	task.delay(0.34, function()
+		if not self.Destroyed then
+			self:Destroy()
+		end
+	end)
+
+	return true
 end
 
 function Window:Destroy()
@@ -1787,6 +2298,12 @@ function Window:_ClosePopup()
 		if popup.Connection then
 			pcall(function()
 				popup.Connection:Disconnect()
+			end)
+		end
+
+		if popup.Cleanup then
+			pcall(function()
+				popup.Cleanup:Clean()
 			end)
 		end
 
@@ -2666,17 +3183,18 @@ function Window:CreateTab(options)
 		iconGlow.BackgroundColor3 = accent
 	end)
 
-	local icon = create("TextLabel", {
+	local iconHost = create("Frame", {
 		BackgroundTransparency = 1,
-		Position = UDim2.fromOffset(16, 0),
-		Size = UDim2.fromOffset(30, 54),
-		Font = Enum.Font.GothamBold,
-		Text = options.Icon or "◆",
-		TextColor3 = theme.Muted,
-		TextSize = 13,
+		Position = UDim2.fromOffset(16, 12),
+		Size = UDim2.fromOffset(30, 30),
 		ZIndex = 7,
 		Parent = button,
 	})
+
+	local iconName = options.Icon or "diamond"
+	local icon = createVectorIcon(iconHost, iconName, theme.Muted, 7)
+
+	tab.IconHost = iconHost
 
 	local label = create("TextLabel", {
 		BackgroundTransparency = 1,
@@ -2693,6 +3211,7 @@ function Window:CreateTab(options)
 	})
 
 	tab.Icon = icon
+	tab.IconName = iconName
 	tab.Label = label
 	tab.ActiveBar = activeBar
 	tab.IconGlow = iconGlow
@@ -2824,9 +3343,10 @@ function Window:SelectTab(tab)
 			TextColor3 = active and self.Theme.Text or self.Theme.Muted,
 		})
 
-		tween(current.Icon, 0.16, {
-			TextColor3 = active and self.Theme.Accent or self.Theme.Muted,
-		})
+		setVectorIconColor(
+			current.Icon,
+			active and self.Theme.Accent or self.Theme.Muted
+		)
 
 		tween(current.ActiveBar, 0.16, {
 			BackgroundTransparency = active and 0 or 1,
@@ -3732,20 +4252,23 @@ function Section:AddDropdown(options)
 		selectorStroke.Color = accent
 	end)
 
-	local icon = create("TextLabel", {
+	local iconHost = create("Frame", {
 		BackgroundTransparency = 1,
-		Position = UDim2.fromOffset(12, 0),
-		Size = UDim2.fromOffset(28, 44),
-		Font = Enum.Font.GothamBold,
-		Text = options.Icon or "◈",
-		TextColor3 = theme.Accent,
-		TextSize = 15,
+		Position = UDim2.fromOffset(12, 8),
+		Size = UDim2.fromOffset(28, 28),
 		ZIndex = 11,
 		Parent = selector,
 	})
 
+	local icon = createVectorIcon(
+		iconHost,
+		options.Icon or "diamond",
+		theme.Accent,
+		11
+	)
+
 	self.Window:BindAccent(function(accent)
-		icon.TextColor3 = accent
+		setVectorIconColor(icon, accent)
 	end)
 
 	local selectedLabel = create("TextLabel", {
@@ -3762,18 +4285,16 @@ function Section:AddDropdown(options)
 		Parent = selector,
 	})
 
-	create("TextLabel", {
+	local chevronHost = create("Frame", {
 		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -14, 0.5, 0),
+		Position = UDim2.new(1, -13, 0.5, 0),
 		Size = UDim2.fromOffset(18, 18),
 		BackgroundTransparency = 1,
-		Font = Enum.Font.GothamBold,
-		Text = "⌄",
-		TextColor3 = theme.Text,
-		TextSize = 15,
 		ZIndex = 11,
 		Parent = selector,
 	})
+
+	createVectorIcon(chevronHost, "chevron", theme.Text, 11)
 
 	local controller = {}
 
@@ -3885,18 +4406,16 @@ function Section:AddMultiDropdown(options)
 		Parent = selector,
 	})
 
-	create("TextLabel", {
+	local chevronHost = create("Frame", {
 		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -14, 0.5, 0),
+		Position = UDim2.new(1, -13, 0.5, 0),
 		Size = UDim2.fromOffset(18, 18),
 		BackgroundTransparency = 1,
-		Font = Enum.Font.GothamBold,
-		Text = "⌄",
-		TextColor3 = theme.Text,
-		TextSize = 15,
 		ZIndex = 11,
 		Parent = selector,
 	})
+
+	createVectorIcon(chevronHost, "chevron", theme.Text, 11)
 
 	local controller = {}
 
@@ -3967,7 +4486,7 @@ function Section:AddMultiDropdown(options)
 
 		for _, value in ipairs(values) do
 			table.insert(menuItems, {
-				Text = (selected[value] and "✓  " or "○  ") .. tostring(value),
+				Text = (selected[value] and "[x] " or "[ ] ") .. tostring(value),
 				Value = value,
 				Selected = selected[value] == true,
 			})
@@ -4179,23 +4698,48 @@ function Section:AddKeybind(options)
 	end
 
 	self.Window.Maid:Give(keyButton.MouseButton1Click:Connect(function()
+		if listening then
+			return
+		end
+
 		listening = true
-		keyButton.Text = "..."
+		self.Window.CapturingKeybind = true
+		keyButton.Text = "Pressione..."
 		keyStroke.Color = theme.Accent
+		keyStroke.Transparency = 0.12
 	end))
 
 	self.Window.Maid:Give(UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		if listening then
+			if input.KeyCode == Enum.KeyCode.Escape then
+				listening = false
+				keyButton.Text = currentKey.Name
+				keyStroke.Color = theme.Stroke
+				keyStroke.Transparency = 0.35
+
+				task.defer(function()
+					self.Window.CapturingKeybind = false
+				end)
+
+				return
+			end
+
 			if input.KeyCode ~= Enum.KeyCode.Unknown then
 				listening = false
 				keyStroke.Color = theme.Stroke
+				keyStroke.Transparency = 0.35
 				controller:Set(input.KeyCode, true)
+
+				task.defer(function()
+					self.Window.CapturingKeybind = false
+				end)
 			end
 
 			return
 		end
 
 		if not gameProcessed
+			and not self.Window.CapturingKeybind
 			and currentKey ~= Enum.KeyCode.Unknown
 			and input.KeyCode == currentKey then
 
@@ -4220,29 +4764,18 @@ function Section:AddColor(options)
 	local description = options.Description or ""
 	local value = tableToColor(options.Default) or theme.Accent
 
-	local palette = options.Palette or {
-		Color3.fromRGB(112, 76, 255),
-		Color3.fromRGB(54, 125, 255),
-		Color3.fromRGB(0, 190, 255),
-		Color3.fromRGB(72, 222, 178),
-		Color3.fromRGB(255, 185, 70),
-		Color3.fromRGB(244, 88, 117),
-		Color3.fromRGB(233, 78, 153),
-		Color3.fromRGB(245, 245, 250),
-	}
-
 	local row = self:_CreateRow(
 		description ~= "" and 72 or 58,
 		name .. " " .. description
 	)
 
-	self:_CreateTextBlock(row, name, description, UDim2.new(1, -150, 1, 0))
+	self:_CreateTextBlock(row, name, description, UDim2.new(1, -164, 1, 0))
 
 	local colorButton = create("TextButton", {
 		AutoButtonColor = false,
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, -16, 0.5, 0),
-		Size = UDim2.fromOffset(118, 38),
+		Size = UDim2.fromOffset(132, 40),
 		BackgroundColor3 = theme.Surface,
 		BorderSizePixel = 0,
 		Text = "",
@@ -4251,24 +4784,25 @@ function Section:AddColor(options)
 	})
 
 	addCorner(colorButton, 13)
-	addStroke(colorButton, theme.Stroke, 0.35, 1)
+	local buttonStroke = addStroke(colorButton, theme.Stroke, 0.35, 1)
 
 	local preview = create("Frame", {
 		Position = UDim2.fromOffset(7, 7),
-		Size = UDim2.fromOffset(24, 24),
+		Size = UDim2.fromOffset(26, 26),
 		BackgroundColor3 = value,
 		BorderSizePixel = 0,
 		ZIndex = 11,
 		Parent = colorButton,
 	})
 
-	addCorner(preview, 8)
+	addCorner(preview, 9)
+	addStroke(preview, Color3.new(1, 1, 1), 0.72, 1)
 
-	local rgbLabel = create("TextLabel", {
+	local hexLabel = create("TextLabel", {
 		BackgroundTransparency = 1,
-		Position = UDim2.fromOffset(38, 0),
-		Size = UDim2.new(1, -44, 1, 0),
-		Font = Enum.Font.GothamMedium,
+		Position = UDim2.fromOffset(42, 0),
+		Size = UDim2.new(1, -48, 1, 0),
+		Font = Enum.Font.GothamBold,
 		Text = "",
 		TextColor3 = theme.Muted,
 		TextSize = 9,
@@ -4281,16 +4815,20 @@ function Section:AddColor(options)
 
 	local function render()
 		preview.BackgroundColor3 = value
-
-		local rgb = colorToTable(value)
-		rgbLabel.Text = string.format("%d, %d, %d", rgb.R, rgb.G, rgb.B)
+		hexLabel.Text = colorToHex(value)
 	end
 
 	function controller:Set(newColor, fireCallback)
 		local converted = tableToColor(newColor)
 
 		if not converted then
-			return
+			if type(newColor) == "string" then
+				converted = hexToColor(newColor)
+			end
+		end
+
+		if not converted then
+			return false
 		end
 
 		value = converted
@@ -4299,38 +4837,434 @@ function Section:AddColor(options)
 		if fireCallback ~= false then
 			safeCallback(options.Callback, value)
 		end
+
+		return true
 	end
 
 	function controller:Get()
 		return colorToTable(value)
 	end
 
+	function controller:GetColor3()
+		return value
+	end
+
 	render()
 
+	self.Window.Maid:Give(colorButton.MouseEnter:Connect(function()
+		buttonStroke.Color = self.Window.Theme.Accent
+		buttonStroke.Transparency = 0.18
+	end))
+
+	self.Window.Maid:Give(colorButton.MouseLeave:Connect(function()
+		buttonStroke.Color = theme.Stroke
+		buttonStroke.Transparency = 0.35
+	end))
+
 	self.Window.Maid:Give(colorButton.MouseButton1Click:Connect(function()
-		local items = {}
+		self.Window:_ClosePopup()
 
-		for index, color in ipairs(palette) do
-			local rgb = colorToTable(color)
+		local pickerMaid = Maid.new()
+		local window = self.Window
+		local popupLayer = window.PopupLayer
+		local viewport = popupLayer.AbsoluteSize
 
-			table.insert(items, {
-				Text = string.format(
-					"●  %d, %d, %d",
-					rgb.R,
-					rgb.G,
-					rgb.B
-				),
-				Value = color,
-				Selected = color == value,
-			})
+		local width = math.min(310, math.max(270, viewport.X - 20))
+		local height = 334
+
+		local anchorPos = colorButton.AbsolutePosition
+		local anchorSize = colorButton.AbsoluteSize
+
+		local x = anchorPos.X + anchorSize.X - width
+		local y = anchorPos.Y + anchorSize.Y + 8
+
+		x = math.clamp(x, 10, math.max(10, viewport.X - width - 10))
+
+		if y + height > viewport.Y - 10 then
+			y = anchorPos.Y - height - 8
 		end
 
-		self.Window:_OpenMenu(colorButton, items, function(item)
-			controller:Set(item.Value, true)
-		end, {
-			Width = 220,
-			MaxVisible = 6,
+		y = math.clamp(y, 10, math.max(10, viewport.Y - height - 10))
+
+		local popup = create("CanvasGroup", {
+			Name = "ColorPicker",
+			Position = UDim2.fromOffset(x, y + 8),
+			Size = UDim2.fromOffset(width, height),
+			BackgroundColor3 = theme.Surface,
+			BackgroundTransparency = 0.01,
+			BorderSizePixel = 0,
+			GroupTransparency = 1,
+			ClipsDescendants = true,
+			ZIndex = 140,
+			Parent = popupLayer,
 		})
+
+		addCorner(popup, 18)
+		local popupStroke = addStroke(popup, window.Theme.Accent, 0.18, 1)
+
+		local popupScale = create("UIScale", {
+			Scale = 0.94,
+			Parent = popup,
+		})
+
+		local title = create("TextLabel", {
+			Position = UDim2.fromOffset(16, 12),
+			Size = UDim2.new(1, -70, 0, 22),
+			BackgroundTransparency = 1,
+			Font = Enum.Font.GothamBold,
+			Text = name,
+			TextColor3 = theme.Text,
+			TextSize = 13,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			ZIndex = 141,
+			Parent = popup,
+		})
+
+		local closeButton = create("TextButton", {
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.new(1, -10, 0, 9),
+			Size = UDim2.fromOffset(30, 30),
+			AutoButtonColor = false,
+			BackgroundColor3 = theme.Surface2,
+			BorderSizePixel = 0,
+			Text = "",
+			ZIndex = 142,
+			Parent = popup,
+		})
+		addCorner(closeButton, 9)
+
+		local closeHost = create("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromOffset(15, 15),
+			BackgroundTransparency = 1,
+			ZIndex = 143,
+			Parent = closeButton,
+		})
+		createVectorIcon(closeHost, "close", theme.Muted, 143)
+
+		local currentH, currentS, currentV = value:ToHSV()
+		local draggingSV = false
+		local draggingHue = false
+
+		local sv = create("Frame", {
+			Position = UDim2.fromOffset(16, 48),
+			Size = UDim2.new(1, -32, 0, 170),
+			BackgroundColor3 = Color3.fromHSV(currentH, 1, 1),
+			BorderSizePixel = 0,
+			ClipsDescendants = true,
+			ZIndex = 141,
+			Parent = popup,
+		})
+		addCorner(sv, 13)
+		addStroke(sv, theme.Stroke, 0.35, 1)
+
+		local whiteOverlay = create("Frame", {
+			Size = UDim2.fromScale(1, 1),
+			BackgroundColor3 = Color3.new(1, 1, 1),
+			BorderSizePixel = 0,
+			ZIndex = 142,
+			Parent = sv,
+		})
+		addCorner(whiteOverlay, 13)
+		create("UIGradient", {
+			Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 0),
+				NumberSequenceKeypoint.new(1, 1),
+			}),
+			Rotation = 0,
+			Parent = whiteOverlay,
+		})
+
+		local blackOverlay = create("Frame", {
+			Size = UDim2.fromScale(1, 1),
+			BackgroundColor3 = Color3.new(0, 0, 0),
+			BorderSizePixel = 0,
+			ZIndex = 143,
+			Parent = sv,
+		})
+		addCorner(blackOverlay, 13)
+		create("UIGradient", {
+			Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 1),
+				NumberSequenceKeypoint.new(1, 0),
+			}),
+			Rotation = 90,
+			Parent = blackOverlay,
+		})
+
+		local svCursor = create("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(currentS, 1 - currentV),
+			Size = UDim2.fromOffset(14, 14),
+			BackgroundColor3 = Color3.new(1, 1, 1),
+			BorderSizePixel = 0,
+			ZIndex = 145,
+			Parent = sv,
+		})
+		addCorner(svCursor, 7)
+		addStroke(svCursor, Color3.new(0, 0, 0), 0.35, 2)
+
+		local hue = create("Frame", {
+			Position = UDim2.fromOffset(16, 230),
+			Size = UDim2.new(1, -32, 0, 16),
+			BackgroundColor3 = Color3.new(1, 1, 1),
+			BorderSizePixel = 0,
+			ClipsDescendants = true,
+			ZIndex = 141,
+			Parent = popup,
+		})
+		addCorner(hue, 8)
+
+		create("UIGradient", {
+			Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0.00, Color3.fromHSV(0.00, 1, 1)),
+				ColorSequenceKeypoint.new(0.17, Color3.fromHSV(0.17, 1, 1)),
+				ColorSequenceKeypoint.new(0.33, Color3.fromHSV(0.33, 1, 1)),
+				ColorSequenceKeypoint.new(0.50, Color3.fromHSV(0.50, 1, 1)),
+				ColorSequenceKeypoint.new(0.67, Color3.fromHSV(0.67, 1, 1)),
+				ColorSequenceKeypoint.new(0.83, Color3.fromHSV(0.83, 1, 1)),
+				ColorSequenceKeypoint.new(1.00, Color3.fromHSV(1.00, 1, 1)),
+			}),
+			Rotation = 0,
+			Parent = hue,
+		})
+
+		local hueCursor = create("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.new(currentH, 0, 0.5, 0),
+			Size = UDim2.fromOffset(6, 22),
+			BackgroundColor3 = Color3.new(1, 1, 1),
+			BorderSizePixel = 0,
+			ZIndex = 144,
+			Parent = hue,
+		})
+		addCorner(hueCursor, 3)
+		addStroke(hueCursor, Color3.new(0, 0, 0), 0.42, 1)
+
+		local info = create("Frame", {
+			Position = UDim2.fromOffset(16, 258),
+			Size = UDim2.new(1, -32, 0, 58),
+			BackgroundColor3 = theme.Surface2,
+			BorderSizePixel = 0,
+			ZIndex = 141,
+			Parent = popup,
+		})
+		addCorner(info, 12)
+		addStroke(info, theme.StrokeSoft, 0.28, 1)
+
+		local livePreview = create("Frame", {
+			Position = UDim2.fromOffset(9, 9),
+			Size = UDim2.fromOffset(40, 40),
+			BackgroundColor3 = value,
+			BorderSizePixel = 0,
+			ZIndex = 142,
+			Parent = info,
+		})
+		addCorner(livePreview, 10)
+		addStroke(livePreview, Color3.new(1, 1, 1), 0.70, 1)
+
+		local rgbText = create("TextLabel", {
+			Position = UDim2.fromOffset(60, 6),
+			Size = UDim2.new(0.44, -10, 0, 20),
+			BackgroundTransparency = 1,
+			Font = Enum.Font.GothamMedium,
+			Text = "",
+			TextColor3 = theme.Muted,
+			TextSize = 9,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			ZIndex = 142,
+			Parent = info,
+		})
+
+		local hexBox = create("TextBox", {
+			Position = UDim2.fromOffset(60, 29),
+			Size = UDim2.new(1, -70, 0, 22),
+			BackgroundColor3 = theme.Surface3,
+			BorderSizePixel = 0,
+			ClearTextOnFocus = false,
+			Font = Enum.Font.GothamBold,
+			Text = colorToHex(value),
+			TextColor3 = theme.Text,
+			TextSize = 9,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			ZIndex = 142,
+			Parent = info,
+		})
+		addCorner(hexBox, 7)
+		addPadding(hexBox, 8, 8, 0, 0)
+
+		local function updateVisuals(fireCallback)
+			local newColor = Color3.fromHSV(currentH, currentS, currentV)
+			value = newColor
+
+			preview.BackgroundColor3 = newColor
+			hexLabel.Text = colorToHex(newColor)
+
+			sv.BackgroundColor3 = Color3.fromHSV(currentH, 1, 1)
+			svCursor.Position = UDim2.fromScale(currentS, 1 - currentV)
+			hueCursor.Position = UDim2.new(currentH, 0, 0.5, 0)
+
+			livePreview.BackgroundColor3 = newColor
+			hexBox.Text = colorToHex(newColor)
+
+			local rgb = colorToTable(newColor)
+			rgbText.Text = string.format(
+				"RGB  %d, %d, %d",
+				rgb.R,
+				rgb.G,
+				rgb.B
+			)
+
+			if fireCallback ~= false then
+				safeCallback(options.Callback, newColor)
+			end
+		end
+
+		local function updateSV(inputX, inputY)
+			local size = sv.AbsoluteSize
+			local pos = sv.AbsolutePosition
+
+			currentS = math.clamp(
+				(inputX - pos.X) / math.max(size.X, 1),
+				0,
+				1
+			)
+
+			currentV = 1 - math.clamp(
+				(inputY - pos.Y) / math.max(size.Y, 1),
+				0,
+				1
+			)
+
+			updateVisuals(true)
+		end
+
+		local function updateHue(inputX)
+			local size = hue.AbsoluteSize
+			local pos = hue.AbsolutePosition
+
+			currentH = math.clamp(
+				(inputX - pos.X) / math.max(size.X, 1),
+				0,
+				1
+			)
+
+			updateVisuals(true)
+		end
+
+		pickerMaid:Give(sv.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1
+				or input.UserInputType == Enum.UserInputType.Touch then
+
+				draggingSV = true
+				updateSV(input.Position.X, input.Position.Y)
+			end
+		end))
+
+		pickerMaid:Give(hue.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1
+				or input.UserInputType == Enum.UserInputType.Touch then
+
+				draggingHue = true
+				updateHue(input.Position.X)
+			end
+		end))
+
+		pickerMaid:Give(UserInputService.InputChanged:Connect(function(input)
+			if input.UserInputType ~= Enum.UserInputType.MouseMovement
+				and input.UserInputType ~= Enum.UserInputType.Touch then
+				return
+			end
+
+			if draggingSV then
+				updateSV(input.Position.X, input.Position.Y)
+			elseif draggingHue then
+				updateHue(input.Position.X)
+			end
+		end))
+
+		pickerMaid:Give(UserInputService.InputEnded:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1
+				or input.UserInputType == Enum.UserInputType.Touch then
+
+				draggingSV = false
+				draggingHue = false
+			end
+		end))
+
+		pickerMaid:Give(hexBox.FocusLost:Connect(function()
+			local parsed = hexToColor(hexBox.Text)
+
+			if not parsed then
+				hexBox.Text = colorToHex(value)
+				return
+			end
+
+			currentH, currentS, currentV = parsed:ToHSV()
+			updateVisuals(true)
+		end))
+
+		pickerMaid:Give(closeButton.MouseButton1Click:Connect(function()
+			window:_ClosePopup()
+		end))
+
+		local popupData = {
+			Frame = popup,
+			Connection = nil,
+			Cleanup = pickerMaid,
+		}
+
+		window.ActivePopup = popupData
+
+		task.defer(function()
+			if window.ActivePopup ~= popupData then
+				return
+			end
+
+			popupData.Connection = UserInputService.InputBegan:Connect(function(input)
+				if input.UserInputType ~= Enum.UserInputType.MouseButton1
+					and input.UserInputType ~= Enum.UserInputType.Touch then
+					return
+				end
+
+				local point = input.Position
+				local popupPos = popup.AbsolutePosition
+				local popupSize = popup.AbsoluteSize
+				local anchorP = colorButton.AbsolutePosition
+				local anchorS = colorButton.AbsoluteSize
+
+				local insidePopup =
+					point.X >= popupPos.X
+					and point.X <= popupPos.X + popupSize.X
+					and point.Y >= popupPos.Y
+					and point.Y <= popupPos.Y + popupSize.Y
+
+				local insideAnchor =
+					point.X >= anchorP.X
+					and point.X <= anchorP.X + anchorS.X
+					and point.Y >= anchorP.Y
+					and point.Y <= anchorP.Y + anchorS.Y
+
+				if not insidePopup and not insideAnchor then
+					window:_ClosePopup()
+				end
+			end)
+		end)
+
+		updateVisuals(false)
+
+		tween(popup, 0.20, {
+			Position = UDim2.fromOffset(x, y),
+			GroupTransparency = 0,
+		})
+
+		tween(
+			popupScale,
+			0.26,
+			{Scale = 1},
+			Enum.EasingStyle.Back
+		)
 	end))
 
 	self.Window:_RegisterControl(options.Id, controller)
@@ -4341,6 +5275,9 @@ function Section:AddColor(options)
 
 	return controller
 end
+
+-- Alias mais explícito para novos scripts.
+Section.AddColorPicker = Section.AddColor
 
 --// ============================================================
 --// PROGRESS BAR
