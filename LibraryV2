@@ -875,7 +875,7 @@ function AlphaxUI:CreateWindow(options)
 	-- Loading 2.0.0:
 	-- obrigatório e padronizado pela biblioteca.
 	self.LoadingEnabled = true
-	self.LoadingDuration = 4
+	self.LoadingDuration = 5
 	self.LoadingTitle = tostring(options.Title or "Alphax")
 	self.LoadingSubtitle = "Inicializando interface..."
 	self.LoadingDoneText = "Tudo pronto"
@@ -970,13 +970,14 @@ function AlphaxUI:CreateWindow(options)
 	end
 
 	-- Root chrome: the draggable shell.
-	local chrome = create("Frame", {
+	local chrome = create("CanvasGroup", {
 		Name = "Chrome",
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = options.Position or UDim2.fromScale(0.5, 0.5),
 		Size = self.ExpandedSize,
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
+		GroupTransparency = 0,
 		ZIndex = 2,
 		Parent = screen,
 	})
@@ -996,7 +997,10 @@ function AlphaxUI:CreateWindow(options)
 
 	addCorner(glow, self.CornerRadius + 4)
 
-	local glowStroke = addStroke(glow, theme.Accent, 0.58, 2)
+	local glowStroke = addStroke(glow, theme.Accent, 0.78, 1)
+	self.Glow = glow
+	self.GlowStroke = glowStroke
+
 	self:BindAccent(function(accent)
 		glowStroke.Color = accent
 	end)
@@ -1028,7 +1032,7 @@ function AlphaxUI:CreateWindow(options)
 	})
 
 	addCorner(innerRoundedBorder, math.max(10, self.CornerRadius - 4))
-	local innerStroke = addStroke(innerRoundedBorder, theme.Accent, 0.68, 1)
+	local innerStroke = addStroke(innerRoundedBorder, theme.Accent, 0.84, 1)
 
 	self:BindAccent(function(accent)
 		innerStroke.Color = accent
@@ -1037,13 +1041,16 @@ function AlphaxUI:CreateWindow(options)
 	local softGlow = create("Frame", {
 		Name = "SoftAccentGlow",
 		Position = UDim2.fromOffset(0, 0),
-		Size = UDim2.new(1, 0, 0, 3),
+		Size = UDim2.new(1, -34, 0, 1),
+		Position = UDim2.fromOffset(17, 4),
 		BackgroundColor3 = theme.Accent,
-		BackgroundTransparency = 0.35,
+		BackgroundTransparency = 0.72,
 		BorderSizePixel = 0,
 		ZIndex = 4,
 		Parent = root,
 	})
+
+	self.SoftAccentGlow = softGlow
 
 	self:BindAccent(function(accent)
 		softGlow.BackgroundColor3 = accent
@@ -1916,7 +1923,7 @@ function Window:SetToggleKey(keyCode)
 end
 
 function Window:_PlayLoadingAnimation()
-	if not self.LoadingEnabled or self.Destroyed then
+	if self.Destroyed then
 		return
 	end
 
@@ -1924,7 +1931,9 @@ function Window:_PlayLoadingAnimation()
 	local screen = self.Gui
 	local RunService = game:GetService("RunService")
 
+	-- Main window remains fully hidden until loader exits.
 	self.Chrome.Visible = false
+	self.Chrome.GroupTransparency = 1
 
 	local camera = workspace.CurrentCamera
 	local viewport = camera and camera.ViewportSize or Vector2.new(800, 600)
@@ -1941,302 +1950,84 @@ function Window:_PlayLoadingAnimation()
 	local overlay = create("Frame", {
 		Size = UDim2.fromScale(1, 1),
 		BackgroundColor3 = theme.Background,
-		BackgroundTransparency = 0.06,
+		BackgroundTransparency = 0.03,
 		BorderSizePixel = 0,
 		ZIndex = 500,
 		Parent = loader,
 	})
 
-	local ambientGlowA = create("Frame", {
+	-- Restrained ambient light instead of multiple floating neon blobs.
+	local ambient = create("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0.5, -220, 0.5, -120),
-		Size = UDim2.fromOffset(300, 300),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(
+			math.min(720, viewport.X * 0.75),
+			math.min(440, viewport.Y * 0.65)
+		),
 		BackgroundColor3 = theme.Accent,
-		BackgroundTransparency = 0.91,
+		BackgroundTransparency = 0.965,
 		BorderSizePixel = 0,
 		ZIndex = 500,
 		Parent = overlay,
 	})
-	addCorner(ambientGlowA, 150)
+	addCorner(ambient, 48)
 
-	local ambientGlowB = create("Frame", {
+	local cardWidth = math.min(500, math.max(310, viewport.X - 38))
+	local cardHeight = viewport.X <= 470 and 286 or 270
+
+	local shadow = create("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0.5, 220, 0.5, 130),
-		Size = UDim2.fromOffset(240, 240),
-		BackgroundColor3 = theme.Accent2,
-		BackgroundTransparency = 0.93,
-		BorderSizePixel = 0,
-		ZIndex = 500,
-		Parent = overlay,
-	})
-	addCorner(ambientGlowB, 120)
-
-	local ambientGlowC = create("Frame", {
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0.5, 0, 0.5, 160),
-		Size = UDim2.fromOffset(190, 190),
-		BackgroundColor3 = theme.Accent,
-		BackgroundTransparency = 0.95,
-		BorderSizePixel = 0,
-		ZIndex = 500,
-		Parent = overlay,
-	})
-	addCorner(ambientGlowC, 95)
-
-	local cardWidth = math.min(540, math.max(320, viewport.X - 40))
-	local cardHeight = viewport.X <= 470 and 318 or 300
-
-	local cardShadow = create("Frame", {
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0.5, 0, 0.5, 18),
-		Size = UDim2.fromOffset(cardWidth + 22, cardHeight + 24),
+		Position = UDim2.new(0.5, 0, 0.5, 15),
+		Size = UDim2.fromOffset(cardWidth + 16, cardHeight + 18),
 		BackgroundColor3 = Color3.new(0, 0, 0),
-		BackgroundTransparency = 0.70,
+		BackgroundTransparency = 0.76,
 		BorderSizePixel = 0,
 		ZIndex = 501,
 		Parent = loader,
 	})
-	addCorner(cardShadow, 36)
+	addCorner(shadow, 30)
 
 	local card = create("CanvasGroup", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.new(0.5, 0, 0.5, 20),
 		Size = UDim2.fromOffset(cardWidth, cardHeight),
 		BackgroundColor3 = theme.Surface,
-		BackgroundTransparency = 0.01,
+		BackgroundTransparency = 0,
 		BorderSizePixel = 0,
-		ClipsDescendants = true,
 		GroupTransparency = 0,
+		ClipsDescendants = true,
 		ZIndex = 502,
 		Parent = loader,
 	})
 
-	addCorner(card, 30)
-	local cardStroke = addStroke(card, theme.Stroke, 0.14, 1)
+	addCorner(card, 24)
+	local cardStroke = addStroke(card, theme.Stroke, 0.20, 1)
 
-	local topLine = create("Frame", {
-		Position = UDim2.fromOffset(24, 0),
-		Size = UDim2.new(1, -48, 0, 3),
-		BackgroundColor3 = theme.Accent,
-		BackgroundTransparency = 0.02,
-		BorderSizePixel = 0,
-		ZIndex = 503,
-		Parent = card,
-	})
-	addCorner(topLine, 2)
-	addGradient(topLine, theme.Accent2, theme.Accent, 0)
-
-	local scale = create("UIScale", {
-		Scale = 0.90,
+	local cardScale = create("UIScale", {
+		Scale = 0.95,
 		Parent = card,
 	})
 
-	local badge = create("Frame", {
-		Position = UDim2.fromOffset(24, 20),
-		Size = UDim2.fromOffset(116, 24),
-		BackgroundColor3 = theme.Surface2,
-		BorderSizePixel = 0,
-		ZIndex = 503,
-		Parent = card,
-	})
-	addCorner(badge, 12)
-	addStroke(badge, theme.StrokeSoft, 0.22, 1)
-
-	create("TextLabel", {
-		BackgroundTransparency = 1,
-		Size = UDim2.fromScale(1, 1),
-		Font = Enum.Font.GothamBold,
-		Text = self.LoadingTag,
-		TextColor3 = theme.Accent,
-		TextSize = 9,
-		ZIndex = 504,
-		Parent = badge,
-	})
-
-	local previewLeft = create("Frame", {
-		Position = UDim2.fromOffset(24, 58),
-		Size = UDim2.fromOffset(108, 66),
-		BackgroundColor3 = theme.Surface2,
-		BorderSizePixel = 0,
-		ZIndex = 503,
-		Parent = card,
-	})
-	addCorner(previewLeft, 16)
-	addStroke(previewLeft, theme.StrokeSoft, 0.26, 1)
-
-	local previewLeftHeader = create("Frame", {
-		Position = UDim2.fromOffset(10, 10),
-		Size = UDim2.fromOffset(32, 10),
-		BackgroundColor3 = theme.Accent,
-		BackgroundTransparency = 0.22,
-		BorderSizePixel = 0,
-		ZIndex = 504,
-		Parent = previewLeft,
-	})
-	addCorner(previewLeftHeader, 5)
-
-	local previewLeftLine1 = create("Frame", {
-		Position = UDim2.fromOffset(10, 30),
-		Size = UDim2.fromOffset(54, 6),
-		BackgroundColor3 = theme.Surface4,
-		BorderSizePixel = 0,
-		ZIndex = 504,
-		Parent = previewLeft,
-	})
-	addCorner(previewLeftLine1, 3)
-
-	local previewLeftLine2 = create("Frame", {
-		Position = UDim2.fromOffset(10, 41),
-		Size = UDim2.fromOffset(70, 6),
-		BackgroundColor3 = theme.Surface3,
-		BorderSizePixel = 0,
-		ZIndex = 504,
-		Parent = previewLeft,
-	})
-	addCorner(previewLeftLine2, 3)
-
-	local previewLeftThumb = create("Frame", {
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -12, 0.5, 4),
-		Size = UDim2.fromOffset(26, 26),
-		BackgroundColor3 = theme.Accent,
-		BorderSizePixel = 0,
-		ZIndex = 505,
-		Parent = previewLeft,
-	})
-	addCorner(previewLeftThumb, 8)
-	addGradient(previewLeftThumb, theme.Accent2, theme.Accent, 135)
-
-	local previewRight = create("Frame", {
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -24, 0, 58),
-		Size = UDim2.fromOffset(108, 66),
-		BackgroundColor3 = theme.Surface2,
-		BorderSizePixel = 0,
-		ZIndex = 503,
-		Parent = card,
-	})
-	addCorner(previewRight, 16)
-	addStroke(previewRight, theme.StrokeSoft, 0.26, 1)
-
-	local previewRightHero = create("Frame", {
-		Position = UDim2.fromOffset(10, 10),
-		Size = UDim2.fromOffset(88, 22),
-		BackgroundColor3 = theme.Surface3,
-		BorderSizePixel = 0,
-		ZIndex = 504,
-		Parent = previewRight,
-	})
-	addCorner(previewRightHero, 8)
-
-	local previewRightAccent = create("Frame", {
-		Position = UDim2.fromOffset(10, 38),
-		Size = UDim2.fromOffset(44, 18),
-		BackgroundColor3 = theme.Accent,
-		BorderSizePixel = 0,
-		ZIndex = 505,
-		Parent = previewRight,
-	})
-	addCorner(previewRightAccent, 7)
-	addGradient(previewRightAccent, theme.Accent2, theme.Accent, 0)
-
-	local previewRightSmall = create("Frame", {
-		Position = UDim2.fromOffset(60, 38),
-		Size = UDim2.fromOffset(38, 18),
-		BackgroundColor3 = theme.Surface4,
-		BorderSizePixel = 0,
-		ZIndex = 504,
-		Parent = previewRight,
-	})
-	addCorner(previewRightSmall, 7)
-
-	local hero = create("Frame", {
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 52),
-		Size = UDim2.fromOffset(140, 100),
+	-- Header
+	local header = create("Frame", {
+		Position = UDim2.fromOffset(18, 16),
+		Size = UDim2.new(1, -36, 0, 60),
 		BackgroundTransparency = 1,
 		ZIndex = 503,
 		Parent = card,
 	})
-
-	local logoGlow = create("Frame", {
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.38),
-		Size = UDim2.fromOffset(88, 88),
-		BackgroundColor3 = theme.Accent,
-		BackgroundTransparency = 0.84,
-		BorderSizePixel = 0,
-		ZIndex = 503,
-		Parent = hero,
-	})
-	addCorner(logoGlow, 44)
-
-	local orbit = create("Frame", {
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.38),
-		Size = UDim2.fromOffset(96, 96),
-		BackgroundTransparency = 1,
-		ZIndex = 504,
-		Parent = hero,
-	})
-
-	local orbitDot1 = create("Frame", {
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0.5, 0, 0, 4),
-		Size = UDim2.fromOffset(7, 7),
-		BackgroundColor3 = theme.Accent2,
-		BorderSizePixel = 0,
-		ZIndex = 505,
-		Parent = orbit,
-	})
-	addCorner(orbitDot1, 4)
-
-	local orbitDot2 = create("Frame", {
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(1, -8, 0.5, 0),
-		Size = UDim2.fromOffset(5, 5),
-		BackgroundColor3 = theme.Accent,
-		BorderSizePixel = 0,
-		ZIndex = 505,
-		Parent = orbit,
-	})
-	addCorner(orbitDot2, 3)
-
-	local orbitDot3 = create("Frame", {
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0, 7, 0.5, 0),
-		Size = UDim2.fromOffset(5, 5),
-		BackgroundColor3 = theme.Accent2,
-		BorderSizePixel = 0,
-		ZIndex = 505,
-		Parent = orbit,
-	})
-	addCorner(orbitDot3, 3)
-
-	local logoShadow = create("Frame", {
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.38),
-		Size = UDim2.fromOffset(56, 56),
-		BackgroundColor3 = theme.Accent,
-		BackgroundTransparency = 0.74,
-		BorderSizePixel = 0,
-		ZIndex = 504,
-		Parent = hero,
-	})
-	addCorner(logoShadow, 18)
 
 	local logo = create("Frame", {
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.38),
-		Size = UDim2.fromOffset(52, 52),
+		Position = UDim2.fromOffset(0, 4),
+		Size = UDim2.fromOffset(46, 46),
 		BackgroundColor3 = theme.Accent,
 		BorderSizePixel = 0,
-		ZIndex = 505,
-		Parent = hero,
+		ZIndex = 504,
+		Parent = header,
 	})
-	addCorner(logo, 18)
+	addCorner(logo, 13)
 	addGradient(logo, theme.Accent2, theme.Accent, 135)
-	addStroke(logo, Color3.new(1, 1, 1), 0.64, 1)
+	addStroke(logo, Color3.new(1, 1, 1), 0.70, 1)
 
 	local logoScale = create("UIScale", {
 		Scale = 1,
@@ -2249,147 +2040,66 @@ function Window:_PlayLoadingAnimation()
 		Font = Enum.Font.GothamBold,
 		Text = tostring(self.Options.LogoText or "A"),
 		TextColor3 = Color3.new(1, 1, 1),
-		TextSize = 20,
-		ZIndex = 506,
+		TextSize = 18,
+		ZIndex = 505,
 		Parent = logo,
 	})
 
-	local title = create("TextLabel", {
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 146),
-		Size = UDim2.new(1, -48, 0, 28),
+	create("TextLabel", {
+		Position = UDim2.fromOffset(60, 4),
+		Size = UDim2.new(1, -150, 0, 24),
 		BackgroundTransparency = 1,
 		Font = Enum.Font.GothamBold,
 		Text = self.LoadingTitle,
 		TextColor3 = theme.Text,
-		TextSize = viewport.X <= 470 and 18 or 20,
-		TextXAlignment = Enum.TextXAlignment.Center,
+		TextSize = 17,
+		TextXAlignment = Enum.TextXAlignment.Left,
 		TextTruncate = Enum.TextTruncate.AtEnd,
 		ZIndex = 504,
-		Parent = card,
+		Parent = header,
 	})
 
 	local subtitle = create("TextLabel", {
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 173),
-		Size = UDim2.new(1, -62, 0, 18),
+		Position = UDim2.fromOffset(60, 30),
+		Size = UDim2.new(1, -150, 0, 18),
 		BackgroundTransparency = 1,
 		Font = Enum.Font.Gotham,
 		Text = self.LoadingSubtitle,
 		TextColor3 = theme.Muted,
 		TextSize = 10,
-		TextXAlignment = Enum.TextXAlignment.Center,
-		TextTruncate = Enum.TextTruncate.AtEnd,
-		ZIndex = 504,
-		Parent = card,
-	})
-
-	local progressCard = create("Frame", {
-		Position = UDim2.fromOffset(24, cardHeight - 92),
-		Size = UDim2.new(1, -48, 0, 54),
-		BackgroundColor3 = theme.Surface2,
-		BorderSizePixel = 0,
-		ZIndex = 503,
-		Parent = card,
-	})
-	addCorner(progressCard, 16)
-	addStroke(progressCard, theme.StrokeSoft, 0.22, 1)
-
-	local stageLabel = create("TextLabel", {
-		Position = UDim2.fromOffset(12, 7),
-		Size = UDim2.new(0.62, 0, 0, 12),
-		BackgroundTransparency = 1,
-		Font = Enum.Font.GothamMedium,
-		Text = tostring((self.LoadingSteps and self.LoadingSteps[1]) or "Core"),
-		TextColor3 = theme.Faint,
-		TextSize = 9,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextTruncate = Enum.TextTruncate.AtEnd,
 		ZIndex = 504,
-		Parent = progressCard,
+		Parent = header,
 	})
 
-	local percentLabel = create("TextLabel", {
-		Position = UDim2.new(1, -54, 0, 7),
-		Size = UDim2.fromOffset(42, 12),
+	local versionBadge = create("Frame", {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, 0, 0, 9),
+		Size = UDim2.fromOffset(74, 26),
+		BackgroundColor3 = theme.Surface2,
+		BorderSizePixel = 0,
+		ZIndex = 504,
+		Parent = header,
+	})
+	addCorner(versionBadge, 9)
+	addStroke(versionBadge, theme.StrokeSoft, 0.28, 1)
+
+	create("TextLabel", {
 		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
 		Font = Enum.Font.GothamBold,
-		Text = "0%",
-		TextColor3 = theme.Text,
-		TextSize = 10,
-		TextXAlignment = Enum.TextXAlignment.Right,
-		ZIndex = 504,
-		Parent = progressCard,
-	})
-
-	local progressBack = create("Frame", {
-		Position = UDim2.fromOffset(12, 23),
-		Size = UDim2.new(1, -24, 0, 8),
-		BackgroundColor3 = theme.Surface4,
-		BorderSizePixel = 0,
-		ZIndex = 504,
-		ClipsDescendants = true,
-		Parent = progressCard,
-	})
-	addCorner(progressBack, 4)
-
-	local progress = create("Frame", {
-		Size = UDim2.new(0, 0, 1, 0),
-		BackgroundColor3 = theme.Accent,
-		BorderSizePixel = 0,
+		Text = "v" .. VERSION,
+		TextColor3 = theme.Muted,
+		TextSize = 9,
 		ZIndex = 505,
-		ClipsDescendants = true,
-		Parent = progressBack,
+		Parent = versionBadge,
 	})
-	addCorner(progress, 4)
-	addGradient(progress, theme.Accent2, theme.Accent, 0)
 
-	local progressShine = create("Frame", {
-		Position = UDim2.fromOffset(-40, 0),
-		Size = UDim2.fromOffset(36, 8),
-		BackgroundColor3 = Color3.new(1, 1, 1),
-		BackgroundTransparency = 0.82,
-		BorderSizePixel = 0,
-		ZIndex = 506,
-		Parent = progress,
-	})
-	addCorner(progressShine, 4)
-
-	local miniBarA = create("Frame", {
-		Position = UDim2.fromOffset(12, 36),
-		Size = UDim2.fromOffset(54, 6),
-		BackgroundColor3 = theme.Accent,
-		BackgroundTransparency = 0.18,
-		BorderSizePixel = 0,
-		ZIndex = 504,
-		Parent = progressCard,
-	})
-	addCorner(miniBarA, 3)
-
-	local miniBarB = create("Frame", {
-		Position = UDim2.fromOffset(72, 36),
-		Size = UDim2.fromOffset(40, 6),
-		BackgroundColor3 = theme.Surface4,
-		BorderSizePixel = 0,
-		ZIndex = 504,
-		Parent = progressCard,
-	})
-	addCorner(miniBarB, 3)
-
-	local miniBarC = create("Frame", {
-		Position = UDim2.fromOffset(118, 36),
-		Size = UDim2.fromOffset(62, 6),
-		BackgroundColor3 = theme.Surface3,
-		BorderSizePixel = 0,
-		ZIndex = 504,
-		Parent = progressCard,
-	})
-	addCorner(miniBarC, 3)
-
-	local stepRow = create("Frame", {
-		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -18),
-		Size = UDim2.new(1, -48, 0, 18),
+	-- Module preview row: deliberately simple and product-like.
+	local moduleRow = create("Frame", {
+		Position = UDim2.fromOffset(18, 88),
+		Size = UDim2.new(1, -36, 0, 64),
 		BackgroundTransparency = 1,
 		ZIndex = 503,
 		Parent = card,
@@ -2400,79 +2110,185 @@ function Window:_PlayLoadingAnimation()
 		HorizontalAlignment = Enum.HorizontalAlignment.Center,
 		VerticalAlignment = Enum.VerticalAlignment.Center,
 		Padding = UDim.new(0, 8),
-		Parent = stepRow,
+		Parent = moduleRow,
 	})
 
-	local steps = {}
-	local stepNames = self.LoadingSteps or {"Core", "Theme", "Layout", "Controls", "Ready"}
+	local moduleNames = {"Core", "Theme", "Layout", "Controls"}
+	local moduleIcons = {"diamond", "visual", "inputs", "controls"}
+	local moduleCards = {}
 
-	for index, stepName in ipairs(stepNames) do
-		local width = math.max(50, math.min(84, 22 + (#tostring(stepName) * 6)))
-
-		local pill = create("Frame", {
-			Size = UDim2.fromOffset(width, 16),
+	for index, moduleName in ipairs(moduleNames) do
+		local moduleCard = create("Frame", {
+			Size = UDim2.new(0.25, -6, 1, 0),
 			BackgroundColor3 = theme.Surface2,
 			BorderSizePixel = 0,
 			ZIndex = 504,
-			Parent = stepRow,
+			Parent = moduleRow,
 		})
-		addCorner(pill, 8)
+		addCorner(moduleCard, 12)
 
-		local fill = create("Frame", {
-			Size = UDim2.fromScale(0, 1),
-			BackgroundColor3 = theme.Accent,
-			BackgroundTransparency = 0.15,
-			BorderSizePixel = 0,
+		local moduleStroke = addStroke(moduleCard, theme.StrokeSoft, 0.32, 1)
+
+		local iconHost = create("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(0.5, 0, 0, 8),
+			Size = UDim2.fromOffset(22, 22),
+			BackgroundTransparency = 1,
 			ZIndex = 505,
-			Parent = pill,
+			Parent = moduleCard,
 		})
-		addCorner(fill, 8)
-		addGradient(fill, theme.Accent2, theme.Accent, 0)
+
+		local vector = createVectorIcon(
+			iconHost,
+			moduleIcons[index],
+			theme.Faint,
+			505
+		)
 
 		local label = create("TextLabel", {
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 1, -8),
+			Size = UDim2.new(1, -8, 0, 14),
 			BackgroundTransparency = 1,
-			Size = UDim2.fromScale(1, 1),
 			Font = Enum.Font.GothamBold,
-			Text = tostring(stepName),
+			Text = moduleName,
 			TextColor3 = theme.Faint,
 			TextSize = 8,
-			ZIndex = 506,
-			Parent = pill,
+			ZIndex = 505,
+			Parent = moduleCard,
 		})
 
-		steps[index] = {
-			Pill = pill,
-			Fill = fill,
+		moduleCards[index] = {
+			Card = moduleCard,
+			Stroke = moduleStroke,
+			Icon = vector,
 			Label = label,
 		}
 	end
 
-	tween(loader, 0.18 * self.AnimationSpeed, {
-		GroupTransparency = 0,
+	-- Progress section
+	local progressBox = create("Frame", {
+		Position = UDim2.fromOffset(18, 166),
+		Size = UDim2.new(1, -36, 0, 68),
+		BackgroundColor3 = theme.Surface2,
+		BorderSizePixel = 0,
+		ZIndex = 503,
+		Parent = card,
+	})
+	addCorner(progressBox, 14)
+	addStroke(progressBox, theme.StrokeSoft, 0.28, 1)
+
+	local stageLabel = create("TextLabel", {
+		Position = UDim2.fromOffset(12, 9),
+		Size = UDim2.new(1, -70, 0, 16),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.GothamMedium,
+		Text = "Inicializando Core",
+		TextColor3 = theme.Muted,
+		TextSize = 9,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		ZIndex = 504,
+		Parent = progressBox,
 	})
 
+	local percentLabel = create("TextLabel", {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -12, 0, 9),
+		Size = UDim2.fromOffset(52, 16),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.GothamBold,
+		Text = "0%",
+		TextColor3 = theme.Text,
+		TextSize = 10,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		ZIndex = 504,
+		Parent = progressBox,
+	})
+
+	local progressBack = create("Frame", {
+		Position = UDim2.fromOffset(12, 33),
+		Size = UDim2.new(1, -24, 0, 9),
+		BackgroundColor3 = theme.Surface4,
+		BorderSizePixel = 0,
+		ClipsDescendants = true,
+		ZIndex = 504,
+		Parent = progressBox,
+	})
+	addCorner(progressBack, 5)
+
+	local progress = create("Frame", {
+		Size = UDim2.new(0, 0, 1, 0),
+		BackgroundColor3 = theme.Accent,
+		BorderSizePixel = 0,
+		ClipsDescendants = true,
+		ZIndex = 505,
+		Parent = progressBack,
+	})
+	addCorner(progress, 5)
+	addGradient(progress, theme.Accent2, theme.Accent, 0)
+
+	local shine = create("Frame", {
+		Position = UDim2.fromOffset(-30, 0),
+		Size = UDim2.fromOffset(28, 9),
+		BackgroundColor3 = Color3.new(1, 1, 1),
+		BackgroundTransparency = 0.84,
+		BorderSizePixel = 0,
+		ZIndex = 506,
+		Parent = progress,
+	})
+	addCorner(shine, 5)
+
+	local footer = create("TextLabel", {
+		Position = UDim2.fromOffset(12, 48),
+		Size = UDim2.new(1, -24, 0, 12),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.Gotham,
+		Text = "Preparando a interface para uso",
+		TextColor3 = theme.Faint,
+		TextSize = 8,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ZIndex = 504,
+		Parent = progressBox,
+	})
+
+	-- On narrow mobile, keep structure but reduce height pressure.
+	if viewport.X <= 470 then
+		moduleRow.Position = UDim2.fromOffset(18, 84)
+		progressBox.Position = UDim2.fromOffset(18, 166)
+	end
+
+	-- Slower, more intentional appearance.
 	tween(
-		cardShadow,
-		0.28 * self.AnimationSpeed,
-		{Position = UDim2.new(0.5, 0, 0.5, 10)},
+		loader,
+		0.55 * self.AnimationSpeed,
+		{GroupTransparency = 0},
+		Enum.EasingStyle.Quint
+	)
+
+	tween(
+		shadow,
+		0.65 * self.AnimationSpeed,
+		{Position = UDim2.new(0.5, 0, 0.5, 9)},
 		Enum.EasingStyle.Quint
 	)
 
 	tween(
 		card,
-		0.30 * self.AnimationSpeed,
+		0.68 * self.AnimationSpeed,
 		{Position = UDim2.fromScale(0.5, 0.5)},
 		Enum.EasingStyle.Quint
 	)
 
 	tween(
-		scale,
-		0.36 * self.AnimationSpeed,
+		cardScale,
+		0.72 * self.AnimationSpeed,
 		{Scale = 1},
 		Enum.EasingStyle.Back
 	)
 
-	local started = os.clock()
+	-- Progress starts only after most of the entrance is visible.
+	local started = os.clock() + (0.45 * self.AnimationSpeed)
 	local duration = self.LoadingDuration
 	local connection
 
@@ -2484,94 +2300,93 @@ function Window:_PlayLoadingAnimation()
 			return
 		end
 
-		local elapsed = os.clock() - started
+		local elapsed = math.max(0, os.clock() - started)
 		local alpha = math.clamp(elapsed / duration, 0, 1)
 		local eased = 1 - ((1 - alpha) ^ 3)
 
-		local pulse = 0.5 + (math.sin(elapsed * 4.0) * 0.5)
-		local breathe = 0.5 + (math.sin(elapsed * 2.6) * 0.5)
+		local pulse = 0.5 + (math.sin(os.clock() * 3.1) * 0.5)
 
-		orbit.Rotation = (orbit.Rotation + (deltaTime * 110)) % 360
-
-		logoGlow.BackgroundTransparency = 0.88 - (pulse * 0.08)
-		logoGlow.Size = UDim2.fromOffset(
-			88 + math.floor(pulse * 12),
-			88 + math.floor(pulse * 12)
-		)
-
-		logoScale.Scale = 0.985 + (pulse * 0.04)
-
-		ambientGlowA.BackgroundTransparency = 0.95 - (breathe * 0.04)
-		ambientGlowB.BackgroundTransparency = 0.96 - (pulse * 0.03)
-		ambientGlowC.BackgroundTransparency = 0.97 - (pulse * 0.025)
-
-		cardStroke.Transparency = 0.18 - (pulse * 0.05)
-
-		previewLeft.Rotation = math.sin(elapsed * 1.4) * 2.2
-		previewRight.Rotation = -math.sin(elapsed * 1.25) * 2.0
+		-- Subtle motion, not exaggerated glow/orbits.
+		logoScale.Scale = 0.99 + (pulse * 0.02)
+		ambient.BackgroundTransparency = 0.972 - (pulse * 0.012)
+		cardStroke.Transparency = 0.22 - (pulse * 0.035)
 
 		progress.Size = UDim2.new(eased, 0, 1, 0)
-		progressShine.Position = UDim2.fromOffset(
-			math.floor((progress.AbsoluteSize.X + 38) * pulse) - 38,
+		shine.Position = UDim2.fromOffset(
+			math.floor((progress.AbsoluteSize.X + 30) * pulse) - 30,
 			0
 		)
 
-		miniBarA.Size = UDim2.fromOffset(24 + math.floor(pulse * 30), 6)
-		miniBarB.Size = UDim2.fromOffset(20 + math.floor(breathe * 24), 6)
-		miniBarC.Size = UDim2.fromOffset(32 + math.floor(pulse * 30), 6)
+		local percent = math.floor(eased * 100 + 0.5)
+		percentLabel.Text = tostring(percent) .. "%"
 
-		percentLabel.Text = tostring(math.floor(eased * 100 + 0.5)) .. "%"
+		local stageCount = #moduleCards
+		local stageIndex = math.clamp(
+			math.ceil(eased * stageCount),
+			1,
+			stageCount
+		)
 
-		local count = math.max(1, #stepNames)
-		local stageIndex = math.clamp(math.ceil(eased * count), 1, count)
-		stageLabel.Text = tostring(stepNames[stageIndex] or "Core")
+		stageLabel.Text = "Inicializando " .. moduleNames[stageIndex]
 
-		for index, stepData in ipairs(steps) do
-			local localStart = (index - 1) / count
-			local localEnd = index / count
-			local localAlpha = math.clamp((eased - localStart) / math.max(localEnd - localStart, 0.001), 0, 1)
-			local fillAlpha = 1 - ((1 - localAlpha) ^ 2)
+		for index, data in ipairs(moduleCards) do
+			local reached = index <= stageIndex
 
-			stepData.Fill.Size = UDim2.new(fillAlpha, 0, 1, 0)
-			stepData.Label.TextColor3 = (
-				index <= stageIndex
-				and (index == stageIndex and theme.Text or theme.Muted)
-				or theme.Faint
+			data.Card.BackgroundColor3 = reached and theme.Surface3 or theme.Surface2
+			data.Stroke.Color = reached and theme.Accent or theme.StrokeSoft
+			data.Stroke.Transparency = reached and 0.56 or 0.32
+
+			setVectorIconColor(
+				data.Icon,
+				reached and theme.Accent or theme.Faint
 			)
+
+			data.Label.TextColor3 = reached and theme.Text or theme.Faint
 		end
 
 		if alpha >= 1 then
 			connection:Disconnect()
 
-			stageLabel.Text = tostring(stepNames[#stepNames] or "Ready")
 			percentLabel.Text = "100%"
+			stageLabel.Text = "Interface pronta"
 			subtitle.Text = self.LoadingDoneText
+			footer.Text = "Concluído"
+
+			for _, data in ipairs(moduleCards) do
+				data.Card.BackgroundColor3 = theme.Surface3
+				data.Stroke.Color = theme.Accent
+				data.Stroke.Transparency = 0.50
+				setVectorIconColor(data.Icon, theme.Accent)
+				data.Label.TextColor3 = theme.Text
+			end
 
 			tween(
 				logoScale,
-				0.16 * self.AnimationSpeed,
-				{Scale = 1.08},
+				0.22 * self.AnimationSpeed,
+				{Scale = 1.05},
 				Enum.EasingStyle.Back
 			)
 
-			task.delay(0.12, function()
+			-- Small completion hold before disappearing.
+			task.delay(0.32 * self.AnimationSpeed, function()
 				if not loader.Parent or self.Destroyed then
 					return
 				end
 
+				-- Slower disappearance.
 				tween(
-					scale,
-					0.23 * self.AnimationSpeed,
-					{Scale = 0.94},
-					Enum.EasingStyle.Back,
+					cardScale,
+					0.60 * self.AnimationSpeed,
+					{Scale = 0.96},
+					Enum.EasingStyle.Quint,
 					Enum.EasingDirection.In
 				)
 
 				tween(
 					card,
-					0.24 * self.AnimationSpeed,
+					0.62 * self.AnimationSpeed,
 					{
-						Position = UDim2.new(0.5, 0, 0.5, -12),
+						Position = UDim2.new(0.5, 0, 0.5, -10),
 						GroupTransparency = 1,
 					},
 					Enum.EasingStyle.Quint,
@@ -2579,21 +2394,25 @@ function Window:_PlayLoadingAnimation()
 				)
 
 				tween(
-					cardShadow,
-					0.22 * self.AnimationSpeed,
+					shadow,
+					0.58 * self.AnimationSpeed,
 					{
-						Position = UDim2.new(0.5, 0, 0.5, 18),
+						Position = UDim2.new(0.5, 0, 0.5, 17),
 						BackgroundTransparency = 1,
 					},
 					Enum.EasingStyle.Quint,
 					Enum.EasingDirection.In
 				)
 
-				tween(loader, 0.24 * self.AnimationSpeed, {
-					GroupTransparency = 1,
-				})
+				tween(
+					loader,
+					0.68 * self.AnimationSpeed,
+					{GroupTransparency = 1},
+					Enum.EasingStyle.Quint,
+					Enum.EasingDirection.In
+				)
 
-				task.delay(0.25 * self.AnimationSpeed, function()
+				task.delay(0.72 * self.AnimationSpeed, function()
 					if loader and loader.Parent then
 						loader:Destroy()
 					end
@@ -2603,6 +2422,7 @@ function Window:_PlayLoadingAnimation()
 					end
 
 					self.Chrome.Visible = true
+					self.Chrome.GroupTransparency = 1
 
 					local safePosition = clampWindowPosition(
 						self.Chrome,
@@ -2615,37 +2435,34 @@ function Window:_PlayLoadingAnimation()
 						safePosition.X.Scale,
 						safePosition.X.Offset,
 						safePosition.Y.Scale,
-						safePosition.Y.Offset + 12
+						safePosition.Y.Offset + 10
 					)
 
 					if self.Root and self.Root:IsA("CanvasGroup") then
-						self.Root.GroupTransparency = 1
+						self.Root.GroupTransparency = 0
 					end
 
 					if self.WindowScale then
-						self.WindowScale.Scale = 0.92 * self.InterfaceScale
+						self.WindowScale.Scale = 0.95 * self.InterfaceScale
 					end
 
 					tween(
 						self.Chrome,
-						0.30 * self.AnimationSpeed,
-						{Position = safePosition},
+						0.50 * self.AnimationSpeed,
+						{
+							Position = safePosition,
+							GroupTransparency = 0,
+						},
 						Enum.EasingStyle.Quint
 					)
 
 					if self.WindowScale then
 						tween(
 							self.WindowScale,
-							0.36 * self.AnimationSpeed,
+							0.54 * self.AnimationSpeed,
 							{Scale = self.InterfaceScale},
 							Enum.EasingStyle.Back
 						)
-					end
-
-					if self.Root and self.Root:IsA("CanvasGroup") then
-						tween(self.Root, 0.26 * self.AnimationSpeed, {
-							GroupTransparency = 0,
-						})
 					end
 				end)
 			end)
@@ -2869,19 +2686,20 @@ function Window:SetVisible(state, force)
 			self.MobileMode and 6 or 10
 		)
 
+		chrome.GroupTransparency = 1
 		chrome.Position = UDim2.new(
 			safePosition.X.Scale,
 			safePosition.X.Offset,
 			safePosition.Y.Scale,
-			safePosition.Y.Offset + 12
+			safePosition.Y.Offset + 10
 		)
 
 		if root and root:IsA("CanvasGroup") then
-			root.GroupTransparency = 1
+			root.GroupTransparency = 0
 		end
 
 		if scale then
-			scale.Scale = 0.92 * self.InterfaceScale
+			scale.Scale = 0.95 * self.InterfaceScale
 		end
 
 		if dim then
@@ -2893,36 +2711,34 @@ function Window:SetVisible(state, force)
 			blur.Size = 0
 		end
 
+		-- Whole chrome enters together, including borders/glow.
 		tween(
 			chrome,
-			0.30,
-			{Position = safePosition},
+			0.46,
+			{
+				Position = safePosition,
+				GroupTransparency = 0,
+			},
 			Enum.EasingStyle.Quint
 		)
 
 		if scale then
 			tween(
 				scale,
-				0.36,
+				0.50,
 				{Scale = self.InterfaceScale},
 				Enum.EasingStyle.Back
 			)
 		end
 
-		if root and root:IsA("CanvasGroup") then
-			tween(root, 0.26, {
-				GroupTransparency = 0,
-			})
-		end
-
 		if dim then
-			tween(dim, 0.28, {
+			tween(dim, 0.44, {
 				BackgroundTransparency = self.DimTransparency or 0.72,
 			})
 		end
 
 		if blur then
-			tween(blur, 0.30, {
+			tween(blur, 0.44, {
 				Size = 6,
 			})
 		end
@@ -2934,54 +2750,48 @@ function Window:SetVisible(state, force)
 			self:SetMobileSidebar(false)
 		end
 
-		if root and root:IsA("CanvasGroup") then
-			tween(root, 0.25, {
-				GroupTransparency = 1,
-			})
-		end
-
-		if scale then
-			tween(
-				scale,
-				0.27,
-				{Scale = 0.92 * self.InterfaceScale},
-				Enum.EasingStyle.Back,
-				Enum.EasingDirection.In
-			)
-		end
-
 		tween(
 			chrome,
-			0.26,
+			0.44,
 			{
 				Position = UDim2.new(
 					chrome.Position.X.Scale,
 					chrome.Position.X.Offset,
 					chrome.Position.Y.Scale,
-					chrome.Position.Y.Offset + 12
+					chrome.Position.Y.Offset + 10
 				),
+				GroupTransparency = 1,
 			},
 			Enum.EasingStyle.Quint,
 			Enum.EasingDirection.In
 		)
 
+		if scale then
+			tween(
+				scale,
+				0.44,
+				{Scale = 0.95 * self.InterfaceScale},
+				Enum.EasingStyle.Quint,
+				Enum.EasingDirection.In
+			)
+		end
+
 		if dim then
-			tween(dim, 0.24, {
+			tween(dim, 0.42, {
 				BackgroundTransparency = 1,
 			})
 		end
 
 		if blur then
-			tween(blur, 0.25, {
+			tween(blur, 0.42, {
 				Size = 0,
 			})
 		end
 
-		task.delay(0.29, function()
+		task.delay(0.48, function()
 			if not self.Destroyed and not self.Visible then
 				self.Gui.Enabled = false
 
-				-- Reposiciona internamente sem mostrar, para a próxima abertura.
 				local current = clampWindowPosition(
 					chrome,
 					chrome.Position,
@@ -2993,8 +2803,10 @@ function Window:SetVisible(state, force)
 					current.X.Scale,
 					current.X.Offset,
 					current.Y.Scale,
-					current.Y.Offset - 12
+					current.Y.Offset - 10
 				)
+
+				chrome.GroupTransparency = 0
 			end
 		end)
 	end
@@ -3027,17 +2839,26 @@ function Window:Close()
 		self:SetMobileSidebar(false)
 	end
 
-	local root = self.Root
 	local chrome = self.Chrome
 	local scale = self.WindowScale
 	local dim = self.Dim
 	local blur = self.BlurEffect
 
-	if root and root:IsA("CanvasGroup") then
+	-- Fade the complete Chrome CanvasGroup.
+	-- This includes outer glow, borders and top accent line.
+	if chrome then
 		tween(
-			root,
-			0.28,
-			{GroupTransparency = 1},
+			chrome,
+			0.52,
+			{
+				Position = UDim2.new(
+					chrome.Position.X.Scale,
+					chrome.Position.X.Offset,
+					chrome.Position.Y.Scale,
+					chrome.Position.Y.Offset + 14
+				),
+				GroupTransparency = 1,
+			},
 			Enum.EasingStyle.Quint,
 			Enum.EasingDirection.In
 		)
@@ -3046,43 +2867,26 @@ function Window:Close()
 	if scale then
 		tween(
 			scale,
-			0.30,
-			{Scale = 0.82 * self.InterfaceScale},
-			Enum.EasingStyle.Back,
-			Enum.EasingDirection.In
-		)
-	end
-
-	if chrome then
-		tween(
-			chrome,
-			0.30,
-			{
-				Position = UDim2.new(
-					chrome.Position.X.Scale,
-					chrome.Position.X.Offset,
-					chrome.Position.Y.Scale,
-					chrome.Position.Y.Offset + 18
-				),
-			},
+			0.52,
+			{Scale = 0.90 * self.InterfaceScale},
 			Enum.EasingStyle.Quint,
 			Enum.EasingDirection.In
 		)
 	end
 
 	if dim then
-		tween(dim, 0.28, {
+		tween(dim, 0.50, {
 			BackgroundTransparency = 1,
 		})
 	end
 
 	if blur then
-		tween(blur, 0.28, {
+		tween(blur, 0.50, {
 			Size = 0,
 		})
 	end
 
-	task.delay(0.34, function()
+	task.delay(0.56, function()
 		if not self.Destroyed then
 			self:Destroy()
 		end
