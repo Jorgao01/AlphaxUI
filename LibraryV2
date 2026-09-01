@@ -1,3 +1,8 @@
+-- AlphaxUI 2.0.0
+-- Biblioteca de UI original para Roblox/Luau.
+-- Build direcionada para execução client-side por executor.
+-- Versão pública: EXATAMENTE 2.0.0
+
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
@@ -446,7 +451,7 @@ local function clampWindowPosition(target, desiredPosition, sizeOverride, margin
 	)
 end
 
-local function makeDraggable(handle, target, maid)
+local function makeDraggable(handle, target, maid, canDrag)
 	local dragging = false
 	local dragInput = nil
 	local startInputPosition = nil
@@ -455,6 +460,10 @@ local function makeDraggable(handle, target, maid)
 	maid:Give(handle.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1
 			or input.UserInputType == Enum.UserInputType.Touch then
+
+			if canDrag and not canDrag() then
+				return
+			end
 
 			dragging = true
 			startInputPosition = input.Position
@@ -652,26 +661,45 @@ function AlphaxUI:CreateWindow(options)
 		Parent = chrome,
 	})
 
-	addCorner(glow, 27)
+	addCorner(glow, 32)
 
 	local glowStroke = addStroke(glow, theme.Accent, 0.58, 2)
 	self:BindAccent(function(accent)
 		glowStroke.Color = accent
 	end)
 
-	local root = create("Frame", {
+	local root = create("CanvasGroup", {
 		Name = "Root",
 		Size = UDim2.fromScale(1, 1),
 		BackgroundColor3 = theme.Background,
 		BorderSizePixel = 0,
 		ClipsDescendants = true,
+		GroupTransparency = 0,
 		ZIndex = 2,
 		Parent = chrome,
 	})
 
 	self.Root = root
-	addCorner(root, 22)
-	addStroke(root, theme.Stroke, 0.12, 1)
+	addCorner(root, 28)
+
+	local rootStroke = addStroke(root, theme.Stroke, 0.08, 1)
+
+	local innerRoundedBorder = create("Frame", {
+		Name = "InnerRoundedBorder",
+		Position = UDim2.fromOffset(4, 4),
+		Size = UDim2.new(1, -8, 1, -8),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ZIndex = 50,
+		Parent = root,
+	})
+
+	addCorner(innerRoundedBorder, 24)
+	local innerStroke = addStroke(innerRoundedBorder, theme.Accent, 0.68, 1)
+
+	self:BindAccent(function(accent)
+		innerStroke.Color = accent
+	end)
 
 	local softGlow = create("Frame", {
 		Name = "SoftAccentGlow",
@@ -691,7 +719,8 @@ function AlphaxUI:CreateWindow(options)
 	-- Topbar
 	local topbar = create("Frame", {
 		Name = "Topbar",
-		Size = UDim2.new(1, 0, 0, 78),
+		Position = UDim2.fromOffset(5, 5),
+		Size = UDim2.new(1, -10, 0, 69),
 		BackgroundColor3 = theme.Topbar,
 		BorderSizePixel = 0,
 		ZIndex = 3,
@@ -699,18 +728,40 @@ function AlphaxUI:CreateWindow(options)
 	})
 
 	self.Topbar = topbar
+	addCorner(topbar, 21)
+	addStroke(topbar, theme.StrokeSoft, 0.38, 1)
 
 	create("Frame", {
 		Name = "TopbarSeparator",
 		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0, 0, 1, 0),
-		Size = UDim2.new(1, 0, 0, 1),
+		Position = UDim2.new(0, 18, 1, 0),
+		Size = UDim2.new(1, -36, 0, 1),
 		BackgroundColor3 = theme.Stroke,
-		BackgroundTransparency = 0.25,
+		BackgroundTransparency = 0.52,
 		BorderSizePixel = 0,
 		ZIndex = 4,
 		Parent = topbar,
 	})
+
+	local mobileMenuButton = create("TextButton", {
+		Name = "MobileMenu",
+		AutoButtonColor = false,
+		Position = UDim2.fromOffset(12, 14),
+		Size = UDim2.fromOffset(40, 40),
+		BackgroundColor3 = theme.Surface,
+		BorderSizePixel = 0,
+		Font = Enum.Font.GothamBold,
+		Text = "≡",
+		TextColor3 = theme.Text,
+		TextSize = 18,
+		Visible = false,
+		ZIndex = 8,
+		Parent = topbar,
+	})
+	addCorner(mobileMenuButton, 12)
+	addStroke(mobileMenuButton, theme.Stroke, 0.30, 1)
+
+	self.MobileMenuButton = mobileMenuButton
 
 	local logoShadow = create("Frame", {
 		Position = UDim2.fromOffset(26, 18),
@@ -723,6 +774,7 @@ function AlphaxUI:CreateWindow(options)
 	})
 
 	addCorner(logoShadow, 13)
+	self.LogoShadow = logoShadow
 
 	local logo = create("Frame", {
 		Position = UDim2.fromOffset(28, 16),
@@ -735,6 +787,7 @@ function AlphaxUI:CreateWindow(options)
 
 	addCorner(logo, 12)
 	addStroke(logo, Color3.fromRGB(204, 190, 255), 0.35, 1)
+	self.Logo = logo
 
 	local logoGradient = addGradient(
 		logo,
@@ -800,6 +853,8 @@ function AlphaxUI:CreateWindow(options)
 		Parent = topbar,
 	})
 
+	self.WindowControls = windowControls
+
 	create("UIListLayout", {
 		FillDirection = Enum.FillDirection.Horizontal,
 		HorizontalAlignment = Enum.HorizontalAlignment.Right,
@@ -822,7 +877,7 @@ function AlphaxUI:CreateWindow(options)
 			Parent = windowControls,
 		})
 
-		addCorner(button, 11)
+		addCorner(button, 13)
 		addStroke(button, theme.Stroke, 0.35, 1)
 
 		self.Maid:Give(button.MouseEnter:Connect(function()
@@ -870,16 +925,34 @@ function AlphaxUI:CreateWindow(options)
 	self.BodyScale = bodyScale
 
 	-- Sidebar
+	local sidebarShade = create("TextButton", {
+		Name = "MobileSidebarShade",
+		AutoButtonColor = false,
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = Color3.new(0, 0, 0),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Text = "",
+		Visible = false,
+		ZIndex = 19,
+		Parent = body,
+	})
+
+	self.MobileSidebarShade = sidebarShade
+
 	local sidebar = create("Frame", {
 		Name = "Sidebar",
-		Size = UDim2.new(0, 250, 1, 0),
+		Position = UDim2.fromOffset(5, 4),
+		Size = UDim2.new(0, 244, 1, -9),
 		BackgroundColor3 = theme.Sidebar,
 		BorderSizePixel = 0,
-		ZIndex = 3,
+		ZIndex = 20,
 		Parent = body,
 	})
 
 	self.Sidebar = sidebar
+	addCorner(sidebar, 20)
+	addStroke(sidebar, theme.StrokeSoft, 0.36, 1)
 
 	local sidebarLine = create("Frame", {
 		AnchorPoint = Vector2.new(1, 0),
@@ -1013,8 +1086,8 @@ function AlphaxUI:CreateWindow(options)
 	-- Content
 	local content = create("Frame", {
 		Name = "Content",
-		Position = UDim2.fromOffset(250, 0),
-		Size = UDim2.new(1, -250, 1, 0),
+		Position = UDim2.fromOffset(255, 0),
+		Size = UDim2.new(1, -255, 1, 0),
 		BackgroundTransparency = 1,
 		ZIndex = 3,
 		Parent = body,
@@ -1115,7 +1188,17 @@ function AlphaxUI:CreateWindow(options)
 
 	self.ModalLayer = modalLayer
 
-	makeDraggable(topbar, chrome, self.Maid)
+	makeDraggable(topbar, chrome, self.Maid, function()
+		return not self.MobileMode
+	end)
+
+	self.Maid:Give(mobileMenuButton.MouseButton1Click:Connect(function()
+		self:ToggleMobileSidebar()
+	end))
+
+	self.Maid:Give(sidebarShade.MouseButton1Click:Connect(function()
+		self:SetMobileSidebar(false)
+	end))
 
 	self.Maid:Give(searchBox:GetPropertyChangedSignal("Text"):Connect(function()
 		self:_ApplySearch(searchBox.Text)
@@ -1149,27 +1232,135 @@ function AlphaxUI:CreateWindow(options)
 			end
 
 			local viewport = camera.ViewportSize
+			local isMobile =
+				UserInputService.TouchEnabled
+				or viewport.X <= 760
+				or viewport.Y <= 500
 
-			if viewport.X <= 820 or viewport.Y <= 560 then
-				self.MobileMode = true
+			self.MobileMode = isMobile
+
+			if isMobile then
+				self.MobileMenuButton.Visible = true
 
 				if not self.Minimized then
-					chrome.Size = UDim2.new(1, -22, 1, -60)
+					chrome.Size = UDim2.new(1, -14, 1, -22)
+					chrome.Position = UDim2.fromScale(0.5, 0.5)
 				end
 
-				sidebar.Size = UDim2.new(0, 205, 1, 0)
-				content.Position = UDim2.fromOffset(205, 0)
-				content.Size = UDim2.new(1, -205, 1, 0)
+				-- Mobile topbar.
+				topbar.Position = UDim2.fromOffset(5, 5)
+				topbar.Size = UDim2.new(1, -10, 0, 64)
+
+				logo.Position = UDim2.fromOffset(63, 11)
+				logoShadow.Position = UDim2.fromOffset(61, 13)
+
+				self.TitleLabel.Position = UDim2.fromOffset(113, 10)
+				self.TitleLabel.Size = UDim2.new(1, -245, 0, 25)
+				self.TitleLabel.TextSize = 16
+
+				self.SubtitleLabel.Position = UDim2.fromOffset(113, 34)
+				self.SubtitleLabel.Size = UDim2.new(1, -245, 0, 18)
+				self.SubtitleLabel.TextSize = 10
+
+				windowControls.Position = UDim2.new(1, -10, 0.5, 0)
+				windowControls.Size = UDim2.fromOffset(90, 36)
+
+				body.Position = UDim2.fromOffset(0, 73)
+				body.Size = UDim2.new(1, 0, 1, -73)
+
+				-- Sidebar vira drawer.
+				sidebar.Size = UDim2.new(
+					0,
+					math.min(278, math.max(228, viewport.X - 70)),
+					1,
+					-9
+				)
+
+				if self.MobileSidebarOpen then
+					sidebar.Position = UDim2.fromOffset(6, 4)
+					sidebarShade.Visible = true
+					sidebarShade.BackgroundTransparency = 0.48
+				else
+					sidebar.Position = UDim2.fromOffset(-290, 4)
+					sidebarShade.Visible = false
+					sidebarShade.BackgroundTransparency = 1
+				end
+
+				-- Conteúdo ocupa toda a largura.
+				content.Position = UDim2.fromOffset(0, 0)
+				content.Size = UDim2.fromScale(1, 1)
+
+				header.Position = UDim2.fromOffset(18, 15)
+				header.Size = UDim2.new(1, -36, 0, 65)
+
+				self.PageTitle.TextSize = 23
+				self.PageDescription.TextSize = 10
+
+				pageContainer.Position = UDim2.fromOffset(0, 84)
+				pageContainer.Size = UDim2.new(1, 0, 1, -84)
+
+				for _, currentTab in ipairs(self.Tabs) do
+					if currentTab.PagePadding then
+						currentTab.PagePadding.PaddingLeft = UDim.new(0, 14)
+						currentTab.PagePadding.PaddingRight = UDim.new(0, 14)
+						currentTab.PagePadding.PaddingTop = UDim.new(0, 3)
+						currentTab.PagePadding.PaddingBottom = UDim.new(0, 18)
+					end
+				end
+
 			else
-				self.MobileMode = false
+				self.MobileSidebarOpen = false
+				self.MobileMenuButton.Visible = false
+				sidebarShade.Visible = false
+				sidebarShade.BackgroundTransparency = 1
 
 				if not self.Minimized then
 					chrome.Size = self.ExpandedSize
 				end
 
-				sidebar.Size = UDim2.new(0, 250, 1, 0)
-				content.Position = UDim2.fromOffset(250, 0)
-				content.Size = UDim2.new(1, -250, 1, 0)
+				topbar.Position = UDim2.fromOffset(5, 5)
+				topbar.Size = UDim2.new(1, -10, 0, 69)
+
+				logo.Position = UDim2.fromOffset(28, 16)
+				logoShadow.Position = UDim2.fromOffset(26, 18)
+
+				self.TitleLabel.Position = UDim2.fromOffset(82, 15)
+				self.TitleLabel.Size = UDim2.new(1, -220, 0, 28)
+				self.TitleLabel.TextSize = 18
+
+				self.SubtitleLabel.Position = UDim2.fromOffset(82, 42)
+				self.SubtitleLabel.Size = UDim2.new(1, -220, 0, 20)
+				self.SubtitleLabel.TextSize = 12
+
+				windowControls.Position = UDim2.new(1, -20, 0.5, 0)
+				windowControls.Size = UDim2.fromOffset(94, 38)
+
+				body.Position = UDim2.fromOffset(0, 78)
+				body.Size = UDim2.new(1, 0, 1, -78)
+
+				sidebar.Position = UDim2.fromOffset(5, 4)
+				sidebar.Size = UDim2.new(0, 244, 1, -9)
+
+				content.Position = UDim2.fromOffset(255, 0)
+				content.Size = UDim2.new(1, -255, 1, 0)
+
+				header.Position = UDim2.fromOffset(32, 22)
+				header.Size = UDim2.new(1, -64, 0, 72)
+
+				self.PageTitle.TextSize = 28
+				self.PageDescription.TextSize = 12
+
+				pageContainer.Position = UDim2.fromOffset(0, 102)
+				pageContainer.Size = UDim2.new(1, 0, 1, -102)
+
+				for _, currentTab in ipairs(self.Tabs) do
+					if currentTab.PagePadding then
+						currentTab.PagePadding.PaddingLeft = UDim.new(0, 32)
+						currentTab.PagePadding.PaddingRight = UDim.new(0, 32)
+						currentTab.PagePadding.PaddingTop = UDim.new(0, 4)
+						currentTab.PagePadding.PaddingBottom = UDim.new(0, 26)
+					end
+				end
 			end
 
 			task.defer(function()
@@ -1178,7 +1369,7 @@ function AlphaxUI:CreateWindow(options)
 						chrome,
 						chrome.Position,
 						chrome.Size,
-						10
+						isMobile and 6 or 10
 					)
 				end
 			end)
@@ -1283,6 +1474,66 @@ function Window:SetToggleKey(keyCode)
 	return false
 end
 
+function Window:SetMobileSidebar(state)
+	if self.Destroyed or not self.MobileMode then
+		return
+	end
+
+	state = state == true
+	self.MobileSidebarOpen = state
+
+	local sidebar = self.Sidebar
+	local shade = self.MobileSidebarShade
+
+	if not sidebar or not shade then
+		return
+	end
+
+	if state then
+		shade.Visible = true
+
+		tween(shade, 0.20, {
+			BackgroundTransparency = 0.48,
+		})
+
+		tween(
+			sidebar,
+			0.28,
+			{
+				Position = UDim2.fromOffset(6, 4),
+			},
+			Enum.EasingStyle.Quint
+		)
+	else
+		tween(shade, 0.18, {
+			BackgroundTransparency = 1,
+		})
+
+		tween(
+			sidebar,
+			0.24,
+			{
+				Position = UDim2.fromOffset(-270, 4),
+			},
+			Enum.EasingStyle.Quint
+		)
+
+		task.delay(0.19, function()
+			if not self.MobileSidebarOpen and shade and shade.Parent then
+				shade.Visible = false
+			end
+		end)
+	end
+end
+
+function Window:ToggleMobileSidebar()
+	if not self.MobileMode then
+		return
+	end
+
+	self:SetMobileSidebar(not self.MobileSidebarOpen)
+end
+
 function Window:_ClampToViewport(sizeOverride, animated)
 	if self.Destroyed or not self.Chrome then
 		return
@@ -1320,10 +1571,14 @@ function Window:SetMinimized(state)
 	local targetSize
 
 	if self.Minimized then
-		targetSize = self.MinimizedSize
+		if self.MobileMode then
+			targetSize = UDim2.new(1, -14, 0, 79)
+		else
+			targetSize = self.MinimizedSize
+		end
 	else
 		if self.MobileMode then
-			targetSize = UDim2.new(1, -22, 1, -60)
+			targetSize = UDim2.new(1, -14, 1, -22)
 		else
 			targetSize = self.ExpandedSize
 		end
@@ -1725,7 +1980,12 @@ function Window:Notify(options)
 	local titleText = tostring(options.Title or "Alphax")
 	local contentText = tostring(options.Content or "")
 
-	local cardWidth = 326
+	local viewportWidth =
+		workspace.CurrentCamera
+		and workspace.CurrentCamera.ViewportSize.X
+		or 400
+
+	local cardWidth = math.min(326, math.max(260, viewportWidth - 28))
 	local textWidth = cardWidth - 42
 
 	local contentHeight = 16
@@ -1869,6 +2129,12 @@ function Window:Confirm(options)
 		child:Destroy()
 	end
 
+	local camera = workspace.CurrentCamera
+	local viewport = camera and camera.ViewportSize or Vector2.new(800, 600)
+
+	local modalWidth = math.min(438, math.max(300, viewport.X - 28))
+	local modalHeight = math.min(254, math.max(238, viewport.Y - 60))
+
 	local shade = create("TextButton", {
 		AutoButtonColor = false,
 		Size = UDim2.fromScale(1, 1),
@@ -1883,57 +2149,56 @@ function Window:Confirm(options)
 
 	local shadow = create("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0.5, 0, 0.5, 13),
-		Size = UDim2.fromOffset(454, 270),
+		Position = UDim2.new(0.5, 0, 0.5, 16),
+		Size = UDim2.fromOffset(modalWidth + 16, modalHeight + 16),
 		BackgroundColor3 = Color3.new(0, 0, 0),
-		BackgroundTransparency = 0.64,
+		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		ZIndex = 301,
 		Parent = self.ModalLayer,
 	})
+	addCorner(shadow, 30)
 
-	addCorner(shadow, 26)
-
-	local modal = create("Frame", {
+	local modal = create("CanvasGroup", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0.5, 0, 0.5, 14),
-		Size = UDim2.fromOffset(438, 254),
+		Position = UDim2.new(0.5, 0, 0.5, 20),
+		Size = UDim2.fromOffset(modalWidth, modalHeight),
 		BackgroundColor3 = theme.Surface,
 		BackgroundTransparency = 0.02,
 		BorderSizePixel = 0,
 		ClipsDescendants = true,
+		GroupTransparency = 1,
 		ZIndex = 302,
 		Parent = self.ModalLayer,
 	})
 
-	addCorner(modal, 22)
-
-	local modalStroke = addStroke(modal, accent, 0.18, 1)
+	addCorner(modal, 24)
+	local modalStroke = addStroke(modal, accent, 0.14, 1)
 
 	local modalScale = create("UIScale", {
-		Scale = 0.92,
+		Scale = 0.88,
 		Parent = modal,
 	})
 
 	local shadowScale = create("UIScale", {
-		Scale = 0.94,
+		Scale = 0.90,
 		Parent = shadow,
 	})
 
 	local accentGlow = create("Frame", {
-		Position = UDim2.fromOffset(-50, -58),
-		Size = UDim2.fromOffset(180, 180),
+		Position = UDim2.fromOffset(-60, -72),
+		Size = UDim2.fromOffset(205, 205),
 		BackgroundColor3 = accent,
 		BackgroundTransparency = 0.82,
 		BorderSizePixel = 0,
 		ZIndex = 302,
 		Parent = modal,
 	})
-	addCorner(accentGlow, 90)
+	addCorner(accentGlow, 103)
 
 	local topLine = create("Frame", {
-		Position = UDim2.fromOffset(18, 0),
-		Size = UDim2.new(1, -36, 0, 2),
+		Position = UDim2.fromOffset(22, 0),
+		Size = UDim2.new(1, -44, 0, 3),
 		BackgroundColor3 = accent,
 		BackgroundTransparency = 0.02,
 		BorderSizePixel = 0,
@@ -1947,16 +2212,16 @@ function Window:Confirm(options)
 		Position = UDim2.fromOffset(20, 18),
 		Size = UDim2.fromOffset(42, 42),
 		BackgroundColor3 = accent,
-		BackgroundTransparency = 0.78,
+		BackgroundTransparency = 0.76,
 		BorderSizePixel = 0,
 		ZIndex = 304,
 		Parent = modal,
 	})
-	addCorner(iconWrap, 13)
-	addStroke(iconWrap, accent, 0.15, 1)
+	addCorner(iconWrap, 14)
+	addStroke(iconWrap, accent, 0.12, 1)
 
 	local iconScale = create("UIScale", {
-		Scale = 0.82,
+		Scale = 0.72,
 		Parent = iconWrap,
 	})
 
@@ -2002,13 +2267,13 @@ function Window:Confirm(options)
 		Position = UDim2.fromOffset(20, 76),
 		Size = UDim2.new(1, -40, 0, 88),
 		BackgroundColor3 = theme.Surface2,
-		BackgroundTransparency = 0.05,
+		BackgroundTransparency = 0.03,
 		BorderSizePixel = 0,
 		ZIndex = 303,
 		Parent = modal,
 	})
-	addCorner(contentCard, 15)
-	addStroke(contentCard, theme.StrokeSoft, 0.22, 1)
+	addCorner(contentCard, 17)
+	addStroke(contentCard, theme.StrokeSoft, 0.16, 1)
 
 	create("TextLabel", {
 		Position = UDim2.fromOffset(15, 13),
@@ -2017,7 +2282,7 @@ function Window:Confirm(options)
 		Font = Enum.Font.Gotham,
 		Text = tostring(options.Content or "Deseja continuar?"),
 		TextColor3 = theme.Muted,
-		TextSize = 11,
+		TextSize = viewport.X <= 480 and 10 or 11,
 		TextWrapped = true,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Top,
@@ -2029,7 +2294,7 @@ function Window:Confirm(options)
 		Position = UDim2.new(0, 20, 1, -75),
 		Size = UDim2.new(1, -40, 0, 1),
 		BackgroundColor3 = theme.Stroke,
-		BackgroundTransparency = 0.48,
+		BackgroundTransparency = 0.50,
 		BorderSizePixel = 0,
 		ZIndex = 303,
 		Parent = modal,
@@ -2052,9 +2317,14 @@ function Window:Confirm(options)
 		Parent = actions,
 	})
 
+	local buttonWidth =
+		viewport.X <= 390
+		and math.floor((modalWidth - 50) / 2)
+		or 120
+
 	local cancel = create("TextButton", {
 		AutoButtonColor = false,
-		Size = UDim2.fromOffset(116, 42),
+		Size = UDim2.fromOffset(buttonWidth, 42),
 		BackgroundColor3 = theme.Surface3,
 		BorderSizePixel = 0,
 		Font = Enum.Font.GothamBold,
@@ -2064,16 +2334,13 @@ function Window:Confirm(options)
 		ZIndex = 304,
 		Parent = actions,
 	})
-	addCorner(cancel, 12)
-	local cancelStroke = addStroke(cancel, theme.Stroke, 0.36, 1)
-	local cancelScale = create("UIScale", {
-		Scale = 1,
-		Parent = cancel,
-	})
+	addCorner(cancel, 13)
+	local cancelStroke = addStroke(cancel, theme.Stroke, 0.34, 1)
+	local cancelScale = create("UIScale", {Scale = 1, Parent = cancel})
 
 	local confirm = create("TextButton", {
 		AutoButtonColor = false,
-		Size = UDim2.fromOffset(124, 42),
+		Size = UDim2.fromOffset(buttonWidth, 42),
 		BackgroundColor3 = accent,
 		BorderSizePixel = 0,
 		Font = Enum.Font.GothamBold,
@@ -2083,28 +2350,24 @@ function Window:Confirm(options)
 		ZIndex = 304,
 		Parent = actions,
 	})
-	addCorner(confirm, 12)
-	local confirmStroke = addStroke(confirm, accent2, 0.08, 1)
+	addCorner(confirm, 13)
+	local confirmStroke = addStroke(confirm, accent2, 0.06, 1)
 	addGradient(confirm, accent2, accent, 0)
 
-	local confirmScale = create("UIScale", {
-		Scale = 1,
-		Parent = confirm,
-	})
+	local confirmScale = create("UIScale", {Scale = 1, Parent = confirm})
 
 	local closed = false
+	local interactionsEnabled = true
 
-	local function animateButton(button, scaleObject, entering, isAccent)
-		if not button or not button.Parent then
+	local function hoverButton(button, scaleObject, entering, isAccent)
+		if not button or not button.Parent or not interactionsEnabled then
 			return
 		end
 
 		tween(
 			scaleObject,
 			0.13,
-			{
-				Scale = entering and 1.035 or 1,
-			},
+			{Scale = entering and 1.035 or 1},
 			Enum.EasingStyle.Quint
 		)
 
@@ -2116,69 +2379,104 @@ function Window:Confirm(options)
 	end
 
 	local function pressButton(scaleObject)
+		if not interactionsEnabled then
+			return
+		end
+
 		tween(
 			scaleObject,
-			0.07,
-			{
-				Scale = 0.96,
-			},
+			0.065,
+			{Scale = 0.95},
 			Enum.EasingStyle.Quint
 		)
 
-		task.delay(0.075, function()
-			if scaleObject and scaleObject.Parent then
+		task.delay(0.07, function()
+			if scaleObject and scaleObject.Parent and interactionsEnabled then
 				tween(
 					scaleObject,
 					0.11,
-					{
-						Scale = 1.035,
-					},
+					{Scale = 1.035},
 					Enum.EasingStyle.Back
 				)
 			end
 		end)
 	end
 
-	local function closeModal(callback)
+	local function closeModal(callback, accepted)
 		if closed then
 			return
 		end
 
 		closed = true
+		interactionsEnabled = false
 
-		tween(shade, 0.18, {
-			BackgroundTransparency = 1,
-		})
+		cancel.Active = false
+		confirm.Active = false
+		shade.Active = false
 
-		tween(shadow, 0.18, {
-			BackgroundTransparency = 1,
-			Position = UDim2.new(0.5, 0, 0.5, 22),
-		})
+		-- Pequena reação inicial antes de sumir.
+		if accepted then
+			tween(
+				confirmScale,
+				0.08,
+				{Scale = 1.07},
+				Enum.EasingStyle.Back
+			)
+		end
 
+		-- Icon é recolhido primeiro.
 		tween(
-			shadowScale,
-			0.18,
-			{
-				Scale = 0.92,
-			},
-			Enum.EasingStyle.Quint
+			iconScale,
+			0.14,
+			{Scale = 0.45},
+			Enum.EasingStyle.Back,
+			Enum.EasingDirection.In
 		)
 
-		tween(modal, 0.18, {
-			BackgroundTransparency = 1,
-			Position = UDim2.new(0.5, 0, 0.5, 24),
-		})
+		-- O modal sobe alguns pixels, encolhe e desaparece como uma unidade.
+		tween(
+			modal,
+			0.24,
+			{
+				Position = UDim2.new(0.5, 0, 0.5, -8),
+				GroupTransparency = 1,
+			},
+			Enum.EasingStyle.Quint,
+			Enum.EasingDirection.In
+		)
 
 		tween(
 			modalScale,
-			0.18,
-			{
-				Scale = 0.93,
-			},
-			Enum.EasingStyle.Quint
+			0.24,
+			{Scale = 0.84},
+			Enum.EasingStyle.Back,
+			Enum.EasingDirection.In
 		)
 
-		task.delay(0.19, function()
+		tween(
+			shadow,
+			0.22,
+			{
+				Position = UDim2.new(0.5, 0, 0.5, 20),
+				BackgroundTransparency = 1,
+			},
+			Enum.EasingStyle.Quint,
+			Enum.EasingDirection.In
+		)
+
+		tween(
+			shadowScale,
+			0.22,
+			{Scale = 0.86},
+			Enum.EasingStyle.Quint,
+			Enum.EasingDirection.In
+		)
+
+		tween(shade, 0.26, {
+			BackgroundTransparency = 1,
+		})
+
+		task.delay(0.255, function()
 			if self.ModalLayer then
 				self.ModalLayer.Visible = false
 
@@ -2192,23 +2490,23 @@ function Window:Confirm(options)
 	end
 
 	self.Maid:Give(cancel.MouseEnter:Connect(function()
-		animateButton(cancel, cancelScale, true, false)
-		cancelStroke.Transparency = 0.16
+		hoverButton(cancel, cancelScale, true, false)
+		cancelStroke.Transparency = 0.14
 	end))
 
 	self.Maid:Give(cancel.MouseLeave:Connect(function()
-		animateButton(cancel, cancelScale, false, false)
-		cancelStroke.Transparency = 0.36
+		hoverButton(cancel, cancelScale, false, false)
+		cancelStroke.Transparency = 0.34
 	end))
 
 	self.Maid:Give(confirm.MouseEnter:Connect(function()
-		animateButton(confirm, confirmScale, true, true)
+		hoverButton(confirm, confirmScale, true, true)
 		confirmStroke.Transparency = 0
 	end))
 
 	self.Maid:Give(confirm.MouseLeave:Connect(function()
-		animateButton(confirm, confirmScale, false, true)
-		confirmStroke.Transparency = 0.08
+		hoverButton(confirm, confirmScale, false, true)
+		confirmStroke.Transparency = 0.06
 	end))
 
 	self.Maid:Give(cancel.MouseButton1Down:Connect(function()
@@ -2220,58 +2518,62 @@ function Window:Confirm(options)
 	end))
 
 	self.Maid:Give(cancel.MouseButton1Click:Connect(function()
-		closeModal(options.OnCancel)
+		closeModal(options.OnCancel, false)
 	end))
 
 	self.Maid:Give(confirm.MouseButton1Click:Connect(function()
-		closeModal(options.OnConfirm)
+		closeModal(options.OnConfirm, true)
 	end))
 
 	self.Maid:Give(shade.MouseButton1Click:Connect(function()
-		closeModal(options.OnCancel)
+		closeModal(options.OnCancel, false)
 	end))
 
-	-- Entrada em camadas.
+	-- Entrada: fade de fundo, modal sobe e cresce com overshoot.
 	tween(shade, 0.20, {
 		BackgroundTransparency = 0.38,
 	})
 
-	tween(shadow, 0.25, {
-		Position = UDim2.new(0.5, 0, 0.5, 10),
-		BackgroundTransparency = 0.68,
-	})
+	tween(
+		shadow,
+		0.30,
+		{
+			Position = UDim2.new(0.5, 0, 0.5, 10),
+			BackgroundTransparency = 0.68,
+		},
+		Enum.EasingStyle.Quint
+	)
 
 	tween(
 		shadowScale,
-		0.32,
-		{
-			Scale = 1,
-		},
+		0.34,
+		{Scale = 1},
 		Enum.EasingStyle.Back
 	)
 
-	tween(modal, 0.25, {
-		Position = UDim2.fromScale(0.5, 0.5),
-		BackgroundTransparency = 0.02,
-	})
+	tween(
+		modal,
+		0.28,
+		{
+			Position = UDim2.fromScale(0.5, 0.5),
+			GroupTransparency = 0,
+		},
+		Enum.EasingStyle.Quint
+	)
 
 	tween(
 		modalScale,
-		0.34,
-		{
-			Scale = 1,
-		},
+		0.38,
+		{Scale = 1},
 		Enum.EasingStyle.Back
 	)
 
-	task.delay(0.07, function()
+	task.delay(0.08, function()
 		if iconScale and iconScale.Parent then
 			tween(
 				iconScale,
-				0.28,
-				{
-					Scale = 1,
-				},
+				0.31,
+				{Scale = 1},
 				Enum.EasingStyle.Back
 			)
 		end
@@ -2417,7 +2719,8 @@ function Window:CreateTab(options)
 		Parent = page,
 	})
 
-	addPadding(page, 32, 32, 4, 26)
+	local pagePadding = addPadding(page, 32, 32, 4, 26)
+	tab.PagePadding = pagePadding
 
 	self:BindAccent(function(accent)
 		page.ScrollBarImageColor3 = accent
@@ -2486,6 +2789,13 @@ function Window:CreateTab(options)
 
 	table.insert(self.Tabs, tab)
 
+	if self.MobileMode and tab.PagePadding then
+		tab.PagePadding.PaddingLeft = UDim.new(0, 14)
+		tab.PagePadding.PaddingRight = UDim.new(0, 14)
+		tab.PagePadding.PaddingTop = UDim.new(0, 3)
+		tab.PagePadding.PaddingBottom = UDim.new(0, 18)
+	end
+
 	if not self.ActiveTab then
 		self:SelectTab(tab)
 	end
@@ -2533,6 +2843,10 @@ function Window:SelectTab(tab)
 	self.PageTitle.Text = tab.Name
 	self.PageDescription.Text = tab.Description
 
+	if self.MobileMode then
+		self:SetMobileSidebar(false)
+	end
+
 	if self.SearchBox.Text ~= "" then
 		self:_ApplySearch(self.SearchBox.Text)
 	end
@@ -2573,7 +2887,7 @@ function Tab:CreateSection(options)
 	section.Frame = frame
 
 	if not options.Transparent then
-		addCorner(frame, 18)
+		addCorner(frame, 20)
 		addStroke(frame, theme.Stroke, 0.25, 1)
 	end
 
@@ -2646,7 +2960,7 @@ function Section:_CreateRow(height, searchableText)
 		Parent = self.Frame,
 	})
 
-	addCorner(row, 15)
+	addCorner(row, 17)
 
 	local rowStroke = addStroke(
 		row,
@@ -3411,7 +3725,7 @@ function Section:AddDropdown(options)
 		Parent = row,
 	})
 
-	addCorner(selector, 12)
+	addCorner(selector, 14)
 	local selectorStroke = addStroke(selector, theme.Accent, 0.52, 1)
 
 	self.Window:BindAccent(function(accent)
@@ -3550,7 +3864,7 @@ function Section:AddMultiDropdown(options)
 		Parent = row,
 	})
 
-	addCorner(selector, 12)
+	addCorner(selector, 14)
 	local selectorStroke = addStroke(selector, theme.Accent, 0.52, 1)
 
 	self.Window:BindAccent(function(accent)
@@ -3729,7 +4043,7 @@ function Section:AddInput(options)
 		Parent = row,
 	})
 
-	addCorner(box, 11)
+	addCorner(box, 14)
 	addPadding(box, 13, 13, 0, 0)
 	local boxStroke = addStroke(box, theme.Stroke, 0.38, 1)
 
@@ -3828,7 +4142,7 @@ function Section:AddKeybind(options)
 		Parent = row,
 	})
 
-	addCorner(keyButton, 10)
+	addCorner(keyButton, 13)
 	local keyStroke = addStroke(keyButton, theme.Stroke, 0.35, 1)
 
 	local controller = {}
@@ -3936,7 +4250,7 @@ function Section:AddColor(options)
 		Parent = row,
 	})
 
-	addCorner(colorButton, 10)
+	addCorner(colorButton, 13)
 	addStroke(colorButton, theme.Stroke, 0.35, 1)
 
 	local preview = create("Frame", {
@@ -4232,7 +4546,7 @@ function Section:AddSegmented(options)
 		Parent = row,
 	})
 
-	addCorner(holder, 9)
+	addCorner(holder, 12)
 	addPadding(holder, 4, 4, 4, 4)
 
 	local layout = create("UIListLayout", {
