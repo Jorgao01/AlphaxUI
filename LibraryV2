@@ -542,7 +542,7 @@ local function createVectorIcon(parent, iconName, color, zIndex)
 			)
 		end
 
-\telseif iconName == "clock" then
+	elseif iconName == "clock" then
 		local ring = create("Frame", {
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.5, 0.5),
