@@ -3967,27 +3967,39 @@ function Window:LoadConfig(jsonOrTable, fireCallbacks)
 	return true
 end
 
-function Window:_ClosePopup()
-	if self.ActivePopup then
-		local popup = self.ActivePopup
+function Window:_ClosePopup(immediate)
+	if not self.ActivePopup then
+		return
+	end
 
-		self.ActivePopup = nil
+	local popup = self.ActivePopup
+	self.ActivePopup = nil
 
-		if popup.Connection then
-			pcall(function()
-				popup.Connection:Disconnect()
-			end)
-		end
+	if popup.Connection then
+		pcall(function()
+			popup.Connection:Disconnect()
+		end)
 
-		if popup.Cleanup then
-			pcall(function()
-				popup.Cleanup:Clean()
-			end)
-		end
+		popup.Connection = nil
+	end
 
-		if popup.Frame and popup.Frame.Parent then
-			popup.Frame:Destroy()
-		end
+	-- Dropdown/MultiDropdown podem fornecer sua própria animação de saída.
+	if not immediate
+		and popup.CloseAnimation
+		and type(popup.CloseAnimation) == "function" then
+
+		pcall(popup.CloseAnimation)
+		return
+	end
+
+	if popup.Cleanup then
+		pcall(function()
+			popup.Cleanup:Clean()
+		end)
+	end
+
+	if popup.Frame and popup.Frame.Parent then
+		popup.Frame:Destroy()
 	end
 end
 
@@ -4010,6 +4022,7 @@ function Window:_OpenMenu(anchor, items, onSelect, options)
 	local viewport = self.PopupLayer.AbsoluteSize
 	local x = absPos.X
 	local y = absPos.Y + absSize.Y + 7
+	local opensAbove = false
 
 	if x + width > viewport.X - 12 then
 		x = math.max(12, viewport.X - width - 12)
@@ -4017,31 +4030,45 @@ function Window:_OpenMenu(anchor, items, onSelect, options)
 
 	if y + height > viewport.Y - 12 then
 		y = math.max(12, absPos.Y - height - 7)
+		opensAbove = true
 	end
 
-	local popup = create("Frame", {
+	local targetPosition = UDim2.fromOffset(x, y)
+
+	-- Começa alguns pixels em direção ao seletor.
+	local startOffset = opensAbove and 8 or -8
+	local closeOffset = opensAbove and 7 or -7
+
+	local popup = create("CanvasGroup", {
 		Name = "Popup",
-		Position = UDim2.fromOffset(x, y),
+		Position = UDim2.fromOffset(x, y + startOffset),
 		Size = UDim2.fromOffset(width, height),
 		BackgroundColor3 = theme.Surface,
 		BorderSizePixel = 0,
 		ClipsDescendants = true,
+		GroupTransparency = 1,
 		ZIndex = 120,
 		Parent = self.PopupLayer,
 	})
 
-	addCorner(popup, 12)
-	addStroke(popup, theme.Accent, 0.28, 1)
+	addCorner(popup, 14)
+	local popupStroke = addStroke(popup, theme.Accent, 0.34, 1)
+
+	local popupScale = create("UIScale", {
+		Scale = 0.95,
+		Parent = popup,
+	})
 
 	local shadow = create("Frame", {
 		Position = UDim2.fromOffset(-3, -3),
 		Size = UDim2.new(1, 6, 1, 6),
-		BackgroundTransparency = 1,
+		BackgroundColor3 = Color3.new(0, 0, 0),
+		BackgroundTransparency = 0.86,
 		BorderSizePixel = 0,
 		ZIndex = 119,
 		Parent = popup,
 	})
-	addCorner(shadow, 14)
+	addCorner(shadow, 16)
 
 	local scroll = create("ScrollingFrame", {
 		Size = UDim2.fromScale(1, 1),
@@ -4051,6 +4078,7 @@ function Window:_OpenMenu(anchor, items, onSelect, options)
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
 		ScrollBarThickness = 2,
 		ScrollBarImageColor3 = theme.Accent,
+		ScrollBarImageTransparency = 0.18,
 		ZIndex = 121,
 		Parent = popup,
 	})
@@ -4062,6 +4090,8 @@ function Window:_OpenMenu(anchor, items, onSelect, options)
 	})
 
 	addPadding(scroll, 6, 6, 6, 6)
+
+	local itemControllers = {}
 
 	for index, item in ipairs(items) do
 		local itemText
@@ -4087,17 +4117,57 @@ function Window:_OpenMenu(anchor, items, onSelect, options)
 			Parent = scroll,
 		})
 
-		addCorner(button, 8)
+		addCorner(button, 9)
 
-		if selected then
-			addStroke(button, theme.Accent, 0.3, 1)
+		local buttonStroke = addStroke(
+			button,
+			theme.Accent,
+			selected and 0.30 or 1,
+			1
+		)
+
+		local buttonScale = create("UIScale", {
+			Scale = 1,
+			Parent = button,
+		})
+
+		local controller = {}
+
+		function controller:SetSelected(state, text)
+			selected = state == true
+
+			if text ~= nil then
+				button.Text = tostring(text)
+			end
+
+			tween(button, 0.14, {
+				BackgroundColor3 = selected and theme.Surface4 or theme.Surface2,
+				TextColor3 = selected and theme.Text or theme.Muted,
+			})
+
+			buttonStroke.Transparency = selected and 0.30 or 1
 		end
+
+		function controller:SetText(text)
+			button.Text = tostring(text)
+		end
+
+		controller.Button = button
+		controller.Stroke = buttonStroke
+		itemControllers[index] = controller
 
 		self.Maid:Give(button.MouseEnter:Connect(function()
 			tween(button, 0.12, {
 				BackgroundColor3 = theme.Surface4,
 				TextColor3 = theme.Text,
 			})
+
+			tween(
+				buttonScale,
+				0.12,
+				{Scale = 1.015},
+				Enum.EasingStyle.Quint
+			)
 		end))
 
 		self.Maid:Give(button.MouseLeave:Connect(function()
@@ -4105,10 +4175,35 @@ function Window:_OpenMenu(anchor, items, onSelect, options)
 				BackgroundColor3 = selected and theme.Surface4 or theme.Surface2,
 				TextColor3 = selected and theme.Text or theme.Muted,
 			})
+
+			tween(
+				buttonScale,
+				0.12,
+				{Scale = 1},
+				Enum.EasingStyle.Quint
+			)
+		end))
+
+		self.Maid:Give(button.MouseButton1Down:Connect(function()
+			tween(
+				buttonScale,
+				0.06,
+				{Scale = 0.975},
+				Enum.EasingStyle.Quint
+			)
+		end))
+
+		self.Maid:Give(button.MouseButton1Up:Connect(function()
+			tween(
+				buttonScale,
+				0.10,
+				{Scale = 1.015},
+				Enum.EasingStyle.Back
+			)
 		end))
 
 		self.Maid:Give(button.MouseButton1Click:Connect(function()
-			onSelect(item, index)
+			onSelect(item, index, controller)
 
 			if options.KeepOpen ~= true then
 				self:_ClosePopup()
@@ -4119,7 +4214,65 @@ function Window:_OpenMenu(anchor, items, onSelect, options)
 	local popupData = {
 		Frame = popup,
 		Connection = nil,
+		Closing = false,
+		ItemControllers = itemControllers,
 	}
+
+	popupData.CloseAnimation = function()
+		if popupData.Closing then
+			return
+		end
+
+		popupData.Closing = true
+
+		if popupData.Connection then
+			pcall(function()
+				popupData.Connection:Disconnect()
+			end)
+			popupData.Connection = nil
+		end
+
+		if not popup or not popup.Parent then
+			return
+		end
+
+		tween(
+			popup,
+			0.20,
+			{
+				Position = UDim2.fromOffset(x, y + closeOffset),
+				GroupTransparency = 1,
+			},
+			Enum.EasingStyle.Quint,
+			Enum.EasingDirection.In
+		)
+
+		tween(
+			popupScale,
+			0.20,
+			{Scale = 0.95},
+			Enum.EasingStyle.Quint,
+			Enum.EasingDirection.In
+		)
+
+		tween(shadow, 0.18, {
+			BackgroundTransparency = 1,
+		})
+
+		popupStroke.Transparency = 0.62
+
+		task.delay(0.21, function()
+			if popupData.Cleanup then
+				pcall(function()
+					popupData.Cleanup:Clean()
+				end)
+			end
+
+			if popup and popup.Parent then
+				popup:Destroy()
+			end
+		end)
+	end
 
 	self.ActivePopup = popupData
 
@@ -4158,7 +4311,29 @@ function Window:_OpenMenu(anchor, items, onSelect, options)
 		end)
 	end)
 
-	return popup
+	-- Entrada do popup.
+	tween(
+		popup,
+		0.22,
+		{
+			Position = targetPosition,
+			GroupTransparency = 0,
+		},
+		Enum.EasingStyle.Quint
+	)
+
+	tween(
+		popupScale,
+		0.27,
+		{Scale = 1},
+		Enum.EasingStyle.Back
+	)
+
+	tween(shadow, 0.24, {
+		BackgroundTransparency = 0.88,
+	})
+
+	return popupData
 end
 
 function Window:Notify(options)
@@ -6146,7 +6321,17 @@ function Section:AddDropdown(options)
 		Parent = selector,
 	})
 
-	createVectorIcon(chevronHost, "chevron", theme.Text, 11)
+	local chevronIcon = createVectorIcon(
+		chevronHost,
+		"chevron",
+		theme.Text,
+		11
+	)
+
+	local selectorScale = create("UIScale", {
+		Scale = 1,
+		Parent = selector,
+	})
 
 	local controller = {}
 
@@ -6184,12 +6369,59 @@ function Section:AddDropdown(options)
 			})
 		end
 
-		self.Window:_OpenMenu(selector, menuItems, function(item)
-			controller:Set(item.Value, true)
-		end, {
-			Width = math.max(selector.AbsoluteSize.X, 230),
-			MaxVisible = 6,
-		})
+		tween(
+			selectorScale,
+			0.12,
+			{Scale = 1.018},
+			Enum.EasingStyle.Quint
+		)
+
+		tween(
+			chevronHost,
+			0.20,
+			{Rotation = 180},
+			Enum.EasingStyle.Quint
+		)
+
+		selectorStroke.Transparency = 0.18
+
+		local popupData = self.Window:_OpenMenu(
+			selector,
+			menuItems,
+			function(item)
+				controller:Set(item.Value, true)
+			end,
+			{
+				Width = math.max(selector.AbsoluteSize.X, 230),
+				MaxVisible = 6,
+			}
+		)
+
+		if popupData then
+			local originalClose = popupData.CloseAnimation
+
+			popupData.CloseAnimation = function()
+				tween(
+					selectorScale,
+					0.18,
+					{Scale = 1},
+					Enum.EasingStyle.Quint
+				)
+
+				tween(
+					chevronHost,
+					0.20,
+					{Rotation = 0},
+					Enum.EasingStyle.Quint
+				)
+
+				selectorStroke.Transparency = 0.52
+
+				if originalClose then
+					originalClose()
+				end
+			end
+		end
 	end))
 
 	self.Window:_RegisterControl(options.Id, controller)
@@ -6269,6 +6501,11 @@ function Section:AddMultiDropdown(options)
 
 	createVectorIcon(chevronHost, "chevron", theme.Text, 11)
 
+	local selectorScale = create("UIScale", {
+		Scale = 1,
+		Parent = selector,
+	})
+
 	local controller = {}
 
 	local function listSelected()
@@ -6344,22 +6581,71 @@ function Section:AddMultiDropdown(options)
 			})
 		end
 
-		self.Window:_OpenMenu(selector, menuItems, function(item)
-			selected[item.Value] = not selected[item.Value]
-			render()
-			safeCallback(options.Callback, listSelected())
+		tween(
+			selectorScale,
+			0.12,
+			{Scale = 1.018},
+			Enum.EasingStyle.Quint
+		)
 
-			-- _OpenMenu fecha este popup após o clique. Reabrimos no
-			-- frame seguinte para atualizar os checks sem criar recursão.
-			task.defer(function()
-				if selector and selector.Parent and self.Window.Visible then
-					openMenu()
+		tween(
+			chevronHost,
+			0.20,
+			{Rotation = 180},
+			Enum.EasingStyle.Quint
+		)
+
+		selectorStroke.Transparency = 0.18
+
+		local popupData = self.Window:_OpenMenu(
+			selector,
+			menuItems,
+			function(item, index, itemController)
+				selected[item.Value] = not selected[item.Value]
+				render()
+				safeCallback(options.Callback, listSelected())
+
+				if itemController then
+					local active = selected[item.Value] == true
+
+					itemController:SetSelected(
+						active,
+						(active and "[x] " or "[ ] ") .. tostring(item.Value)
+					)
 				end
-			end)
-		end, {
-			Width = math.max(selector.AbsoluteSize.X, 240),
-			MaxVisible = 6,
-		})
+			end,
+			{
+				Width = math.max(selector.AbsoluteSize.X, 240),
+				MaxVisible = 6,
+				KeepOpen = true,
+			}
+		)
+
+		if popupData then
+			local originalClose = popupData.CloseAnimation
+
+			popupData.CloseAnimation = function()
+				tween(
+					selectorScale,
+					0.18,
+					{Scale = 1},
+					Enum.EasingStyle.Quint
+				)
+
+				tween(
+					chevronHost,
+					0.20,
+					{Rotation = 0},
+					Enum.EasingStyle.Quint
+				)
+
+				selectorStroke.Transparency = 0.52
+
+				if originalClose then
+					originalClose()
+				end
+			end
+		end
 	end
 
 	render()
@@ -7596,6 +7882,8 @@ function AlphaxUI:GetBuildInfo()
 			"LiveFPS",
 			"UIRuntime",
 			"CustomChangelog",
+			"AnimatedDropdowns",
+			"AnimatedMultiDropdowns",
 			"ReducedBlur",
 		},
 	}
