@@ -1172,7 +1172,7 @@ function AlphaxUI:CreateWindow(options)
 	self.TitleLabel = create("TextLabel", {
 		BackgroundTransparency = 1,
 		Position = UDim2.fromOffset(82, 15),
-		Size = UDim2.fromOffset(330, 28),
+		Size = UDim2.new(1, -220, 0, 28),
 		Font = Enum.Font.GothamBold,
 		Text = options.Title or "Alphax",
 		TextColor3 = theme.Text,
@@ -1186,7 +1186,7 @@ function AlphaxUI:CreateWindow(options)
 	self.SubtitleLabel = create("TextLabel", {
 		BackgroundTransparency = 1,
 		Position = UDim2.fromOffset(82, 42),
-		Size = UDim2.fromOffset(330, 20),
+		Size = UDim2.new(1, -220, 0, 20),
 		Font = Enum.Font.Gotham,
 		Text = options.Subtitle or "Universal",
 		TextColor3 = theme.Muted,
@@ -1197,111 +1197,6 @@ function AlphaxUI:CreateWindow(options)
 		Parent = topbar,
 	})
 
-	-- Área útil para o espaço vazio do topbar.
-	-- Mostra contexto real, sem adicionar decoração desnecessária.
-	local topbarStatus = create("Frame", {
-		Name = "TopbarStatus",
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -126, 0.5, 0),
-		Size = UDim2.fromOffset(286, 34),
-		BackgroundColor3 = theme.Surface,
-		BackgroundTransparency = 0.28,
-		BorderSizePixel = 0,
-		ZIndex = 4,
-		Parent = topbar,
-	})
-	addCorner(topbarStatus, 11)
-	addStroke(topbarStatus, theme.StrokeSoft, 0.48, 1)
-
-	local statusPage = create("Frame", {
-		Size = UDim2.fromOffset(96, 34),
-		BackgroundTransparency = 1,
-		ZIndex = 5,
-		Parent = topbarStatus,
-	})
-
-	local statusDot = create("Frame", {
-		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.fromOffset(10, 17),
-		Size = UDim2.fromOffset(6, 6),
-		BackgroundColor3 = theme.Accent,
-		BorderSizePixel = 0,
-		ZIndex = 6,
-		Parent = statusPage,
-	})
-	addCorner(statusDot, 3)
-
-	local statusPageLabel = create("TextLabel", {
-		Position = UDim2.fromOffset(23, 0),
-		Size = UDim2.new(1, -26, 1, 0),
-		BackgroundTransparency = 1,
-		Font = Enum.Font.GothamBold,
-		Text = "Main",
-		TextColor3 = theme.Text,
-		TextSize = 9,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextTruncate = Enum.TextTruncate.AtEnd,
-		ZIndex = 6,
-		Parent = statusPage,
-	})
-
-	local dividerA = create("Frame", {
-		Position = UDim2.fromOffset(96, 8),
-		Size = UDim2.fromOffset(1, 18),
-		BackgroundColor3 = theme.Stroke,
-		BackgroundTransparency = 0.55,
-		BorderSizePixel = 0,
-		ZIndex = 5,
-		Parent = topbarStatus,
-	})
-
-	local statusThemeLabel = create("TextLabel", {
-		Position = UDim2.fromOffset(107, 0),
-		Size = UDim2.fromOffset(78, 34),
-		BackgroundTransparency = 1,
-		Font = Enum.Font.GothamMedium,
-		Text = tostring(self.ThemeName),
-		TextColor3 = theme.Muted,
-		TextSize = 9,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextTruncate = Enum.TextTruncate.AtEnd,
-		ZIndex = 6,
-		Parent = topbarStatus,
-	})
-
-	local dividerB = create("Frame", {
-		Position = UDim2.fromOffset(191, 8),
-		Size = UDim2.fromOffset(1, 18),
-		BackgroundColor3 = theme.Stroke,
-		BackgroundTransparency = 0.55,
-		BorderSizePixel = 0,
-		ZIndex = 5,
-		Parent = topbarStatus,
-	})
-
-	local statusKeyLabel = create("TextLabel", {
-		Position = UDim2.fromOffset(202, 0),
-		Size = UDim2.fromOffset(74, 34),
-		BackgroundTransparency = 1,
-		Font = Enum.Font.GothamMedium,
-		Text = self.ToggleKey.Name,
-		TextColor3 = theme.Muted,
-		TextSize = 9,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextTruncate = Enum.TextTruncate.AtEnd,
-		ZIndex = 6,
-		Parent = topbarStatus,
-	})
-
-	self.TopbarStatus = topbarStatus
-	self.StatusPageLabel = statusPageLabel
-	self.StatusThemeLabel = statusThemeLabel
-	self.StatusKeyLabel = statusKeyLabel
-	self.StatusDot = statusDot
-
-	self:BindAccent(function(accent)
-		statusDot.BackgroundColor3 = accent
-	end)
 
 	local windowControls = create("Frame", {
 		AnchorPoint = Vector2.new(1, 0.5),
@@ -1585,11 +1480,11 @@ function AlphaxUI:CreateWindow(options)
 		Name = "TabSelectionIndicator",
 		Position = UDim2.fromOffset(16, 88),
 		Size = UDim2.fromOffset(100, 54),
-		BackgroundColor3 = theme.Surface2,
+		BackgroundColor3 = theme.Surface3,
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		Visible = false,
-		ZIndex = 5,
+		ZIndex = 3,
 		Parent = sidebar,
 	})
 
@@ -1598,7 +1493,7 @@ function AlphaxUI:CreateWindow(options)
 	local tabIndicatorStroke = addStroke(
 		tabIndicator,
 		theme.Accent,
-		0.62,
+		0.24,
 		1
 	)
 
@@ -1608,7 +1503,7 @@ function AlphaxUI:CreateWindow(options)
 		Size = UDim2.fromOffset(4, 34),
 		BackgroundColor3 = theme.Accent,
 		BorderSizePixel = 0,
-		ZIndex = 6,
+		ZIndex = 3,
 		Parent = tabIndicator,
 	})
 	addCorner(tabIndicatorBar, 3)
@@ -1617,9 +1512,9 @@ function AlphaxUI:CreateWindow(options)
 		Position = UDim2.fromOffset(4, 4),
 		Size = UDim2.new(1, -8, 1, -8),
 		BackgroundColor3 = theme.Accent,
-		BackgroundTransparency = 0.92,
+		BackgroundTransparency = 0.88,
 		BorderSizePixel = 0,
-		ZIndex = 5,
+		ZIndex = 3,
 		Parent = tabIndicator,
 	})
 	addCorner(tabIndicatorGlow, 11)
@@ -1807,10 +1702,6 @@ function AlphaxUI:CreateWindow(options)
 			if isMobile then
 				self.MobileMenuButton.Visible = true
 
-				if self.TopbarStatus then
-					self.TopbarStatus.Visible = false
-				end
-
 				if not self.Minimized then
 					chrome.Size = UDim2.new(1, -14, 1, -22)
 					chrome.Position = UDim2.fromScale(0.5, 0.5)
@@ -1881,10 +1772,6 @@ function AlphaxUI:CreateWindow(options)
 				self.MobileSidebarOpen = false
 				self.MobileMenuButton.Visible = false
 
-				if self.TopbarStatus then
-					self.TopbarStatus.Visible = true
-				end
-
 				sidebarShade.Visible = false
 				sidebarShade.BackgroundTransparency = 1
 
@@ -1899,11 +1786,11 @@ function AlphaxUI:CreateWindow(options)
 				logoShadow.Position = UDim2.fromOffset(26, 18)
 
 				self.TitleLabel.Position = UDim2.fromOffset(82, 15)
-				self.TitleLabel.Size = UDim2.fromOffset(330, 28)
+				self.TitleLabel.Size = UDim2.new(1, -220, 0, 28)
 				self.TitleLabel.TextSize = 18
 
 				self.SubtitleLabel.Position = UDim2.fromOffset(82, 42)
-				self.SubtitleLabel.Size = UDim2.fromOffset(330, 20)
+				self.SubtitleLabel.Size = UDim2.new(1, -220, 0, 20)
 				self.SubtitleLabel.TextSize = 12
 
 				windowControls.Position = UDim2.new(1, -20, 0.5, 0)
@@ -2103,11 +1990,6 @@ end
 function Window:SetToggleKey(keyCode)
 	if typeof(keyCode) == "EnumItem" and keyCode.EnumType == Enum.KeyCode then
 		self.ToggleKey = keyCode
-
-		if self.StatusKeyLabel then
-			self.StatusKeyLabel.Text = keyCode.Name
-		end
-
 		return true
 	end
 
@@ -4080,7 +3962,7 @@ function Window:_MoveTabIndicator(tab, instant)
 	if instant or not self.TabIndicatorReady then
 		indicator.Position = targetPosition
 		indicator.Size = targetSize
-		indicator.BackgroundTransparency = 0.06
+		indicator.BackgroundTransparency = 0.10
 		indicator.Visible = true
 		self.TabIndicatorReady = true
 		return
@@ -4095,7 +3977,7 @@ function Window:_MoveTabIndicator(tab, instant)
 		{
 			Position = targetPosition,
 			Size = targetSize,
-			BackgroundTransparency = 0.06,
+			BackgroundTransparency = 0.10,
 		},
 		Enum.EasingStyle.Quint
 	)
@@ -4105,7 +3987,7 @@ function Window:_MoveTabIndicator(tab, instant)
 		tween(
 			self.TabIndicatorGlow,
 			0.15,
-			{BackgroundTransparency = 0.84},
+			{BackgroundTransparency = 0.78},
 			Enum.EasingStyle.Quint
 		)
 
@@ -4114,7 +3996,7 @@ function Window:_MoveTabIndicator(tab, instant)
 				tween(
 					self.TabIndicatorGlow,
 					0.18,
-					{BackgroundTransparency = 0.92},
+					{BackgroundTransparency = 0.88},
 					Enum.EasingStyle.Quint
 				)
 			end
@@ -4366,19 +4248,15 @@ function Window:SelectTab(tab)
 		-- Estado visual determinístico: evita o texto/ícone escurecer
 		-- atrás do indicador em trocas rápidas.
 		current.Label.TextColor3 =
-			active and self.Theme.Text or self.Theme.Muted
+			active and Color3.fromRGB(255, 255, 255) or self.Theme.Muted
 
-		current.Label.TextTransparency = active and 0.10 or 0
-
-		if active then
-			tween(current.Label, 0.18, {
-				TextTransparency = 0,
-			})
-		end
+		current.Label.TextTransparency = 0
+		current.Label.TextStrokeColor3 = self.Theme.Background
+		current.Label.TextStrokeTransparency = active and 0.88 or 1
 
 		setVectorIconColor(
 			current.Icon,
-			active and self.Theme.Accent or self.Theme.Muted
+			active and self.Theme.Accent2 or self.Theme.Muted
 		)
 
 		current.ActiveBar.BackgroundTransparency = 1
@@ -4392,10 +4270,6 @@ function Window:SelectTab(tab)
 
 	self.PageTitle.Text = tab.Name
 	self.PageDescription.Text = tab.Description
-
-	if self.StatusPageLabel then
-		self.StatusPageLabel.Text = tab.Name
-	end
 
 	self:_MoveTabIndicator(tab, previous == nil)
 
@@ -4867,19 +4741,19 @@ function Section:AddToggle(options)
 		name .. " " .. description
 	)
 
-	self:_CreateTextBlock(row, name, description, UDim2.new(1, -105, 1, 0))
+	self:_CreateTextBlock(row, name, description, UDim2.new(1, -72, 1, 0))
 
 	local switch = create("Frame", {
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, -16, 0.5, 0),
-		Size = UDim2.fromOffset(64, 34),
+		Size = UDim2.fromOffset(34, 18),
 		BackgroundColor3 = value and theme.Accent or theme.Surface4,
 		BorderSizePixel = 0,
 		ZIndex = 10,
 		Parent = row,
 	})
 
-	addCorner(switch, 17)
+	addCorner(switch, 9)
 	local switchStroke = addStroke(
 		switch,
 		value and theme.Accent2 or theme.Stroke,
@@ -4890,26 +4764,26 @@ function Section:AddToggle(options)
 	local switchGlow = create("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.new(1, 10, 1, 10),
+		Size = UDim2.new(1, 6, 1, 6),
 		BackgroundColor3 = theme.Accent,
 		BackgroundTransparency = value and 0.78 or 1,
 		BorderSizePixel = 0,
 		ZIndex = 9,
 		Parent = switch,
 	})
-	addCorner(switchGlow, 22)
+	addCorner(switchGlow, 12)
 
 	local knob = create("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = value and UDim2.new(1, -17, 0.5, 0) or UDim2.new(0, 17, 0.5, 0),
-		Size = UDim2.fromOffset(27, 27),
+		Position = value and UDim2.new(1, -9, 0.5, 0) or UDim2.new(0, 9, 0.5, 0),
+		Size = UDim2.fromOffset(14, 14),
 		BackgroundColor3 = Color3.fromRGB(248, 248, 252),
 		BorderSizePixel = 0,
 		ZIndex = 11,
 		Parent = switch,
 	})
 
-	addCorner(knob, 14)
+	addCorner(knob, 7)
 	addStroke(knob, Color3.fromRGB(255, 255, 255), 0.45, 1)
 
 	local hit = create("TextButton", {
@@ -4933,7 +4807,7 @@ function Section:AddToggle(options)
 			switchScale,
 			0.14,
 			{
-				Scale = 1.05,
+				Scale = 1.08,
 			},
 			Enum.EasingStyle.Quint
 		)
@@ -4966,7 +4840,7 @@ function Section:AddToggle(options)
 		})
 
 		tween(knob, 0.18, {
-			Position = value and UDim2.new(1, -17, 0.5, 0) or UDim2.new(0, 17, 0.5, 0),
+			Position = value and UDim2.new(1, -9, 0.5, 0) or UDim2.new(0, 9, 0.5, 0),
 		})
 
 		tween(switchGlow, 0.18, {
@@ -6798,7 +6672,6 @@ function AlphaxUI:GetBuildInfo()
 			"ConfigurableKeybind",
 			"SlidingTabIndicator",
 			"SlidingSegmentedIndicator",
-			"TopbarStatusStrip",
 			"ReducedBlur",
 		},
 	}
