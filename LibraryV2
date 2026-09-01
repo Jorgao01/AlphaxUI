@@ -1507,12 +1507,17 @@ function AlphaxUI:CreateWindow(options)
 		local RunService = game:GetService("RunService")
 		local frames = 0
 		local sampleTime = 0
-		local runtimeAccumulator = 0
+
+		-- O relógio continua baseado no tempo real da UI, porém o texto
+		-- só avança um segundo por atualização visual. Assim, se houver
+		-- um frame longo, ele não pula visualmente 2 ou 3 segundos de uma vez.
+		local displayedRuntimeSeconds = 0
+		local runtimeUpdateAccumulator = 0
 
 		self.Maid:Give(RunService.RenderStepped:Connect(function(deltaTime)
 			frames += 1
 			sampleTime += deltaTime
-			runtimeAccumulator += deltaTime
+			runtimeUpdateAccumulator += deltaTime
 
 			if sampleTime >= 0.50 then
 				local fps = math.floor((frames / sampleTime) + 0.5)
@@ -1526,11 +1531,22 @@ function AlphaxUI:CreateWindow(options)
 				sampleTime = 0
 			end
 
-			if runtimeAccumulator >= 0.25 then
-				runtimeAccumulator = 0
+			if runtimeUpdateAccumulator >= 0.20 then
+				runtimeUpdateAccumulator = runtimeUpdateAccumulator % 0.20
+
+				local realRuntimeSeconds = math.max(
+					0,
+					math.floor(os.clock() - self.RuntimeStartedAt)
+				)
+
+				if displayedRuntimeSeconds < realRuntimeSeconds then
+					displayedRuntimeSeconds += 1
+				elseif displayedRuntimeSeconds > realRuntimeSeconds then
+					displayedRuntimeSeconds = realRuntimeSeconds
+				end
 
 				if runtimeValue and runtimeValue.Parent then
-					runtimeValue.Text = formatRuntime(os.clock() - self.RuntimeStartedAt)
+					runtimeValue.Text = formatRuntime(displayedRuntimeSeconds)
 				end
 			end
 		end))
@@ -2802,6 +2818,12 @@ function Window:SetScale(scale)
 			{Scale = self.InterfaceScale},
 			Enum.EasingStyle.Quint
 		)
+
+		task.delay(0.24, function()
+			if not self.Destroyed and self.ActiveTab then
+				self:_MoveTabIndicator(self.ActiveTab, true)
+			end
+		end)
 	end
 
 	return true
@@ -4687,14 +4709,21 @@ function Window:Confirm(options)
 		Parent = actions,
 	})
 
-	local buttonWidth =
-		viewport.X <= 390
+	local compactActions = viewport.X <= 390
+
+	local cancelWidth =
+		compactActions
 		and math.floor((modalWidth - 50) / 2)
-		or 120
+		or 106
+
+	local confirmWidth =
+		compactActions
+		and math.floor((modalWidth - 50) / 2)
+		or 138
 
 	local cancel = create("TextButton", {
 		AutoButtonColor = false,
-		Size = UDim2.fromOffset(buttonWidth, 42),
+		Size = UDim2.fromOffset(cancelWidth, 40),
 		BackgroundColor3 = theme.Surface3,
 		BorderSizePixel = 0,
 		Font = Enum.Font.GothamBold,
@@ -4704,25 +4733,96 @@ function Window:Confirm(options)
 		ZIndex = 304,
 		Parent = actions,
 	})
-	addCorner(cancel, 13)
+	addCorner(cancel, 12)
 	local cancelStroke = addStroke(cancel, theme.Stroke, 0.34, 1)
 	local cancelScale = create("UIScale", {Scale = 1, Parent = cancel})
 
 	local confirm = create("TextButton", {
 		AutoButtonColor = false,
-		Size = UDim2.fromOffset(buttonWidth, 42),
+		Size = UDim2.fromOffset(confirmWidth, 40),
 		BackgroundColor3 = accent,
 		BorderSizePixel = 0,
+		Text = "",
+		ZIndex = 304,
+		Parent = actions,
+	})
+	addCorner(confirm, 12)
+	local confirmStroke = addStroke(confirm, accent2, 0.10, 1)
+	addGradient(confirm, accent2, accent, 0)
+
+	local confirmHighlight = create("Frame", {
+		Position = UDim2.fromOffset(8, 2),
+		Size = UDim2.new(1, -16, 0, 2),
+		BackgroundColor3 = Color3.new(1, 1, 1),
+		BackgroundTransparency = 0.72,
+		BorderSizePixel = 0,
+		ZIndex = 305,
+		Parent = confirm,
+	})
+	addCorner(confirmHighlight, 1)
+
+	local confirmContent = create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.new(1, -18, 1, 0),
+		BackgroundTransparency = 1,
+		ZIndex = 305,
+		Parent = confirm,
+	})
+
+	create("UIListLayout", {
+		FillDirection = Enum.FillDirection.Horizontal,
+		HorizontalAlignment = Enum.HorizontalAlignment.Center,
+		VerticalAlignment = Enum.VerticalAlignment.Center,
+		Padding = UDim.new(0, 7),
+		Parent = confirmContent,
+	})
+
+	local checkWrap = create("Frame", {
+		Size = UDim2.fromOffset(22, 22),
+		BackgroundColor3 = Color3.new(1, 1, 1),
+		BackgroundTransparency = 0.82,
+		BorderSizePixel = 0,
+		ZIndex = 306,
+		Parent = confirmContent,
+	})
+	addCorner(checkWrap, 7)
+
+	local checkA = create("Frame", {
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.fromOffset(5, 12),
+		Size = UDim2.fromOffset(6, 2),
+		BackgroundColor3 = accentText,
+		BorderSizePixel = 0,
+		Rotation = 42,
+		ZIndex = 307,
+		Parent = checkWrap,
+	})
+	addCorner(checkA, 1)
+
+	local checkB = create("Frame", {
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.fromOffset(9, 12),
+		Size = UDim2.fromOffset(9, 2),
+		BackgroundColor3 = accentText,
+		BorderSizePixel = 0,
+		Rotation = -43,
+		ZIndex = 307,
+		Parent = checkWrap,
+	})
+	addCorner(checkB, 1)
+
+	create("TextLabel", {
+		AutomaticSize = Enum.AutomaticSize.X,
+		Size = UDim2.fromOffset(0, 40),
+		BackgroundTransparency = 1,
 		Font = Enum.Font.GothamBold,
 		Text = tostring(options.ConfirmText or "Confirmar"),
 		TextColor3 = accentText,
 		TextSize = 10,
-		ZIndex = 304,
-		Parent = actions,
+		ZIndex = 306,
+		Parent = confirmContent,
 	})
-	addCorner(confirm, 13)
-	local confirmStroke = addStroke(confirm, accent2, 0.06, 1)
-	addGradient(confirm, accent2, accent, 0)
 
 	local confirmScale = create("UIScale", {Scale = 1, Parent = confirm})
 
@@ -4872,11 +4972,19 @@ function Window:Confirm(options)
 	self.Maid:Give(confirm.MouseEnter:Connect(function()
 		hoverButton(confirm, confirmScale, true, true)
 		confirmStroke.Transparency = 0
+
+		tween(checkWrap, 0.14, {
+			BackgroundTransparency = 0.68,
+		})
 	end))
 
 	self.Maid:Give(confirm.MouseLeave:Connect(function()
 		hoverButton(confirm, confirmScale, false, true)
-		confirmStroke.Transparency = 0.06
+		confirmStroke.Transparency = 0.10
+
+		tween(checkWrap, 0.14, {
+			BackgroundTransparency = 0.82,
+		})
 	end))
 
 	self.Maid:Give(cancel.MouseButton1Down:Connect(function()
@@ -4971,17 +5079,30 @@ function Window:_MoveTabIndicator(tab, instant)
 	local sidebar = self.Sidebar
 	local indicator = self.TabIndicator
 
-	-- AbsolutePosition já considera CanvasPosition do ScrollingFrame.
+	-- AbsolutePosition/AbsoluteSize já vêm multiplicados pelo UIScale
+	-- da janela. Como o indicador está dentro da MESMA árvore escalada,
+	-- usar esses pixels diretamente causava escala dupla depois de
+	-- Window:SetScale(), deixando o fundo enorme/desproporcional.
+	local currentScale = 1
+
+	if self.WindowScale and self.WindowScale.Parent then
+		currentScale = math.max(0.001, self.WindowScale.Scale)
+	end
+
 	local relativeX =
-		button.AbsolutePosition.X
-		- sidebar.AbsolutePosition.X
+		(
+			button.AbsolutePosition.X
+			- sidebar.AbsolutePosition.X
+		) / currentScale
 
 	local relativeY =
-		button.AbsolutePosition.Y
-		- sidebar.AbsolutePosition.Y
+		(
+			button.AbsolutePosition.Y
+			- sidebar.AbsolutePosition.Y
+		) / currentScale
 
-	local width = button.AbsoluteSize.X
-	local height = button.AbsoluteSize.Y
+	local width = button.AbsoluteSize.X / currentScale
+	local height = button.AbsoluteSize.Y / currentScale
 
 	if width <= 1 or height <= 1 then
 		task.defer(function()
@@ -6277,6 +6398,48 @@ function Section:AddDropdown(options)
 	)
 	row.ClipsDescendants = true
 
+	-- O row vira apenas um container de layout.
+	-- Assim, quando o combo cresce, o fundo grande NÃO estica junto.
+	row.BackgroundTransparency = 1
+
+	local originalRowStroke = row:FindFirstChildOfClass("UIStroke")
+	if originalRowStroke then
+		originalRowStroke.Transparency = 1
+	end
+
+	local baseCard = create("Frame", {
+		Size = UDim2.new(1, 0, 0, baseHeight),
+		BackgroundColor3 = theme.Surface2,
+		BorderSizePixel = 0,
+		ZIndex = 8,
+		Parent = row,
+	})
+	addCorner(baseCard, self.Window.CardRadius)
+	local baseCardStroke = addStroke(
+		baseCard,
+		theme.StrokeSoft,
+		0.25,
+		1
+	)
+
+	self.Window.Maid:Give(baseCard.MouseEnter:Connect(function()
+		tween(baseCard, 0.15, {
+			BackgroundColor3 = theme.Surface3,
+		})
+
+		baseCardStroke.Color = self.Window.Theme.Accent
+		baseCardStroke.Transparency = 0.72
+	end))
+
+	self.Window.Maid:Give(baseCard.MouseLeave:Connect(function()
+		tween(baseCard, 0.15, {
+			BackgroundColor3 = theme.Surface2,
+		})
+
+		baseCardStroke.Color = theme.StrokeSoft
+		baseCardStroke.Transparency = 0.25
+	end))
+
 	self:_CreateTextBlock(
 		row,
 		name,
@@ -6635,6 +6798,48 @@ function Section:AddMultiDropdown(options)
 		name .. " " .. description .. " " .. table.concat(values, " ")
 	)
 	row.ClipsDescendants = true
+
+	-- O row vira apenas um container de layout.
+	-- Assim, quando o combo cresce, o fundo grande NÃO estica junto.
+	row.BackgroundTransparency = 1
+
+	local originalRowStroke = row:FindFirstChildOfClass("UIStroke")
+	if originalRowStroke then
+		originalRowStroke.Transparency = 1
+	end
+
+	local baseCard = create("Frame", {
+		Size = UDim2.new(1, 0, 0, baseHeight),
+		BackgroundColor3 = theme.Surface2,
+		BorderSizePixel = 0,
+		ZIndex = 8,
+		Parent = row,
+	})
+	addCorner(baseCard, self.Window.CardRadius)
+	local baseCardStroke = addStroke(
+		baseCard,
+		theme.StrokeSoft,
+		0.25,
+		1
+	)
+
+	self.Window.Maid:Give(baseCard.MouseEnter:Connect(function()
+		tween(baseCard, 0.15, {
+			BackgroundColor3 = theme.Surface3,
+		})
+
+		baseCardStroke.Color = self.Window.Theme.Accent
+		baseCardStroke.Transparency = 0.72
+	end))
+
+	self.Window.Maid:Give(baseCard.MouseLeave:Connect(function()
+		tween(baseCard, 0.15, {
+			BackgroundColor3 = theme.Surface2,
+		})
+
+		baseCardStroke.Color = theme.StrokeSoft
+		baseCardStroke.Transparency = 0.25
+	end))
 
 	self:_CreateTextBlock(
 		row,
